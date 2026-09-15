@@ -1,0 +1,25 @@
+{
+  "appenders": {
+    "out": { "type": "stdout", "layout": { "type": "colored" } },
+    "console": { "type": "console", "layout": { "type": "colored" } },
+    "file": {
+      "type": "dateFile",
+      "filename": "c:/dev/node_logs/PropertyManagement.log",
+      "maxLogSize": 10485760, 
+       "pattern": "yyyyMMdd", 
+      "alwaysIncludePattern": true,
+      "backups": 7,
+      "compress": true
+    },
+    "errorFile": { "type": "dateFile", "filename": "c:/dev/node_logs/PropertyManagementerrors.log", "maxLogSize": 10485760, 
+       "pattern": "yyyyMMdd", 
+      "alwaysIncludePattern": true,
+      "backups": 14,
+      "compress": true},
+    "errors": { "type": "logLevelFilter", "level": "error", "appender": "errorFile" }
+  },
+  "categories": {
+    "default": { "appenders": ["console","file",  "errors"], "level": "debug", "enableCallStack": true }
+  },
+  "pm2":false
+}

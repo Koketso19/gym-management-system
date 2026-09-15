@@ -1,0 +1,26 @@
+{
+
+    "version": "1.0",
+    "port": 3000,
+    "ui_port": 3000,
+    "SessionTimeoutMin": 60,
+    "server_ip": "localhost",
+    	"mongoDB": {
+		"url": "mongodb://localhost:27017/BMG",
+		"useNewUrlParser": true
+	},
+    "REDIS": {
+		"port": 6379,
+		"host": "localhost",
+		"dbNumber": 6,
+		"orderDB": 7,
+		"redClient": {}
+	}
+
+
+
+
+
+
+
+}
