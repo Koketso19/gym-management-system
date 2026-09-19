@@ -23,7 +23,7 @@ const param = new ParamLib();
 // ================================================================
 // POST /api/clients/create
 // ================================================================
-router.post('/api/clients/create', verifyToken, async function (req, res) {
+router.post('/api/clients/create', async function (req, res) {
   console.log('POST /api/clients/create', req.body);
 
   try {
@@ -94,7 +94,7 @@ router.post('/api/clients/create', verifyToken, async function (req, res) {
 // ================================================================
 // GET /api/clients/list
 // ================================================================
-router.get('/api/clients/list', verifyToken, async function (req, res) {
+router.get('/api/clients/list',  async function (req, res) {
   console.log('GET /api/clients/list — user:', req.user?.username);
 
   try {
@@ -118,7 +118,7 @@ router.get('/api/clients/list', verifyToken, async function (req, res) {
 // ================================================================
 // GET /api/clients/today
 // ================================================================
-router.get('/api/clients/today', verifyToken, async function (req, res) {
+router.get('/api/clients/today',  async function (req, res) {
   console.log('GET /api/clients/today');
 
   try {
@@ -137,7 +137,7 @@ router.get('/api/clients/today', verifyToken, async function (req, res) {
 // ================================================================
 // GET /api/clients/in-gym
 // ================================================================
-router.get('/api/clients/in-gym', verifyToken, async function (req, res) {
+router.get('/api/clients/in-gym',  async function (req, res) {
   console.log('GET /api/clients/in-gym');
 
   try {
@@ -156,7 +156,7 @@ router.get('/api/clients/in-gym', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/get   { id }
 // ================================================================
-router.post('/api/clients/get', verifyToken, async function (req, res) {
+router.post('/api/clients/get',  async function (req, res) {
   console.log('POST /api/clients/get', req.body);
 
   try {
@@ -179,7 +179,7 @@ router.post('/api/clients/get', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/update   { id, firstName, ... }
 // ================================================================
-router.post('/api/clients/update', verifyToken, async function (req, res) {
+router.post('/api/clients/update',  async function (req, res) {
   console.log('POST /api/clients/update', req.body);
 
   try {
@@ -224,7 +224,7 @@ router.post('/api/clients/update', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/delete   { id }
 // ================================================================
-router.post('/api/clients/delete', verifyToken, async function (req, res) {
+router.post('/api/clients/delete',  async function (req, res) {
   console.log('POST /api/clients/delete', req.body);
 
   try {
@@ -249,7 +249,7 @@ router.post('/api/clients/delete', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/mark-paid   { id, amount? }
 // ================================================================
-router.post('/api/clients/mark-paid', verifyToken, async function (req, res) {
+router.post('/api/clients/mark-paid',  async function (req, res) {
   console.log('POST /api/clients/mark-paid', req.body);
 
   try {
@@ -277,7 +277,7 @@ router.post('/api/clients/mark-paid', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/mark-unpaid   { id }
 // ================================================================
-router.post('/api/clients/mark-unpaid', verifyToken, async function (req, res) {
+router.post('/api/clients/mark-unpaid',  async function (req, res) {
   console.log('POST /api/clients/mark-unpaid', req.body);
 
   try {
@@ -305,7 +305,7 @@ router.post('/api/clients/mark-unpaid', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/checkin   { id }
 // ================================================================
-router.post('/api/clients/checkin', verifyToken, async function (req, res) {
+router.post('/api/clients/checkin', async function (req, res) {
   console.log('POST /api/clients/checkin', req.body);
 
   try {
@@ -338,7 +338,7 @@ router.post('/api/clients/checkin', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/checkout   { id }
 // ================================================================
-router.post('/api/clients/checkout', verifyToken, async function (req, res) {
+router.post('/api/clients/checkout',  async function (req, res) {
   console.log('POST /api/clients/checkout', req.body);
 
   try {
@@ -372,7 +372,7 @@ router.post('/api/clients/checkout', verifyToken, async function (req, res) {
 // ================================================================
 // POST /api/clients/history   { id, limit? }
 // ================================================================
-router.post('/api/clients/history', verifyToken, async function (req, res) {
+router.post('/api/clients/history',  async function (req, res) {
   console.log('POST /api/clients/history', req.body);
 
   try {

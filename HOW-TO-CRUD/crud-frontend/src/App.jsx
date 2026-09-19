@@ -5,12 +5,11 @@ import AuthPage from './pages/login';
 import Sidebar from './components/sidebar';
 import Home from './pages/Home';
 import Clients from './pages/Clients';
-import DateManagement from './pages/DateManagement';
-import Events from './pages/events';
 import Payments from './pages/payments';
-import Rooms from './pages/Rooms';
-import Properties from './pages/properties';
-import Workers from './pages/workers';
+import TodayVisits from './pages/TodayVisits';
+import CheckInLog from './pages/CheckInLog';
+import Users from './pages/workers';
+import Settings from './pages/Settings';
 
 import './App.css';
 
@@ -18,19 +17,16 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    
     const token = localStorage.getItem('token');
     setIsAuthenticated(!!token);
   }, []);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
+  const handleLogin = () => setIsAuthenticated(true);
 
   return (
     <Router>
       <Routes>
-        {/* Login Route */}
+        {/* Login */}
         <Route
           path="/login"
           element={
@@ -56,15 +52,15 @@ function App() {
 
                   <div className="p-4 min-h-screen">
                     <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/clients" element={<Clients />} />
-                      <Route path="/date-management" element={<DateManagement />} />
-                      <Route path="/rooms" element={<Rooms />} />
-                      <Route path="/workers" element={<Workers />} />
-                      <Route path="/events" element={<Events />} />
-                      <Route path="/payments" element={<Payments />} />
-                      <Route path="/properties" element={<Properties />} />
-                      <Route path="*" element={<Navigate to="/" />} />
+                      <Route path="/"          element={<Home />} />
+                      <Route path="/in-gym"    element={<Home />} />
+                      <Route path="/clients"   element={<Clients />} />
+                      <Route path="/payments"  element={<Payments />} />
+                      <Route path="/today"     element={<TodayVisits />} />
+                      <Route path="/history"   element={<CheckInLog />} />
+                      <Route path="/users"     element={<Users />} />
+                      <Route path="/settings"  element={<Settings />} />
+                      <Route path="*"          element={<Navigate to="/" />} />
                     </Routes>
                   </div>
                 </div>

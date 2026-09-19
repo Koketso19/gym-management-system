@@ -138,7 +138,7 @@ DbConnect();
 // ================================================================
 
 var authRoutes = require('./routes/auth');
-var clientRoutes = require('./routes/clients');
+var clientRoutes = require('./routes/clients/clients.js');
 var propertyRoutes = require('./routes/property.js');
 var roomRoutes = require('./routes/room.js');
 var paymentRoutes = require('./routes/payments');
