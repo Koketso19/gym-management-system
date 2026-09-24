@@ -7,6 +7,7 @@ const express = require('express');
 const router  = express.Router();
 const moment  = require('moment');
 
+
 // ---- YOUR JWT MIDDLEWARE ----
 const { verifyToken } = require('../../middleware/authMiddleware');
 
@@ -14,11 +15,14 @@ const { verifyToken } = require('../../middleware/authMiddleware');
 const ClientLib = require('../../lib/classClient');
 const LogLib    = require('../../lib/classLogging');
 const ParamLib  = require('../../lib/classParam');
+const PaymentService = require('../../lib/classPayment');
 
 // ---- INITIALIZE ----
 const c     = new ClientLib();
 const log   = new LogLib();
 const param = new ParamLib();
+const ps    = new PaymentService();
+
 
 // ================================================================
 // POST /api/clients/create
@@ -95,23 +99,18 @@ router.post('/api/clients/create', verifyToken, async function (req, res) {
 // GET /api/clients/list
 // ================================================================
 router.get('/api/clients/list', verifyToken, async function (req, res) {
-  console.log('GET /api/clients/list — user:', req.user?.username);
-
   try {
-    const result = await c.Find({});
+    const result  = await c.Find({});
     const clients = result.ClientArr || [];
 
-    console.log('✅ Found clients:', clients.length);
+    // Lazy rollover — cheap: no-op if already current month
+    for (const cl of clients) {
+      await ps.rollMonth(cl);
+    }
 
-    res.json({
-      success: true,
-      count: clients.length,
-      clients: clients
-    });
-
+    res.json({ success: true, count: clients.length, clients });
   } catch (err) {
-    console.error('Get clients error:', err);
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -389,6 +388,52 @@ router.post('/api/clients/history', verifyToken, async function (req, res) {
 
   } catch (err) {
     console.error('Get history error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/api/clients/pay', verifyToken, async function (req, res) {
+  try {
+    const { id, amount, method, note } = req.body;
+    if (!id || !amount) {
+      return res.status(400).json({ success: false, message: 'id and amount required' });
+    }
+
+    const result = await c.FindOneRec({ _id: id });
+    if (!result.Rec) {
+      return res.status(404).json({ success: false, message: 'Client not found' });
+    }
+
+    const out = await ps.recordPayment(result.Rec, Number(amount), {
+      method, note, paidBy: req.user.username
+    });
+
+    await log.WriteUserTrToDB(
+      param, 'ClientPayment', req.user.username,
+      `Recorded R${amount} for ${result.Rec.UserID}`, req.user.username
+    );
+
+    res.json({ success: true, payment: out.payment, client: out.client });
+  } catch (err) {
+    console.error('pay error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/api/clients/ledger', verifyToken, async function (req, res) {
+  try {
+    const { id, year } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'id required' });
+
+    const result = await c.FindOneRec({ _id: id });
+    if (!result.Rec) return res.status(404).json({ success: false, message: 'Client not found' });
+
+    const y = year || moment().format('YYYY');
+    const ledger   = await ps.getYearLedger(result.Rec, y);
+    const payments = await ps.listPayments(id);
+
+    res.json({ success: true, year: y, ledger, payments });
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });

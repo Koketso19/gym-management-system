@@ -1,19 +1,18 @@
 export default function TableList({
   tableData = [],
-  searchTerm = '',
   handleOpen,
   handleDelete,
   handleMarkPaid,
   handleMarkUnpaid,
   handleCheckIn,
   handleCheckOut,
+  handlePay,
+  handleLedger,
 }) {
-  // --- filter by search ---
-  const filteredClients = tableData.filter((c) => {
-    const term = searchTerm.toLowerCase();
-    const hay = `${c.FirstName} ${c.LastName} ${c.UserID} ${c.email} ${c.phone}`.toLowerCase();
-    return hay.includes(term);
-  });
+  const badgeClass = (status) =>
+    status === 'Paid'    ? 'badge-success' :
+    status === 'Partial' ? 'badge-warning' :
+                           'badge-error';
 
   return (
     <div className="overflow-x-auto px-4 pb-6">
@@ -34,9 +33,11 @@ export default function TableList({
         </thead>
 
         <tbody>
-          {filteredClients.map((c, idx) => {
-            const paid = c.payment?.status === 'Paid';
-            const rate = c.membership?.rate ?? 0;
+          {tableData.map((c, idx) => {
+            const status = c.payment?.status || 'Unpaid';
+            const rate   = c.membership?.rate ?? 0;
+            const bal    = c.payment?.balance || 0;
+            const due    = c.payment?.dueThisMonth || 0;
 
             return (
               <tr
@@ -62,11 +63,23 @@ export default function TableList({
                 {/* Rate */}
                 <td className="border-r border-base-300">R {rate}</td>
 
-                {/* Payment badge */}
+                {/* Payment badge + credit + due */}
                 <td className="border-r border-base-300">
-                  <span className={`badge ${paid ? 'badge-success' : 'badge-error'}`}>
-                    {paid ? 'Paid' : 'Unpaid'}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={`badge ${badgeClass(status)}`}>
+                      {status}
+                    </span>
+                    {bal > 0 && (
+                      <span className="badge badge-info" title="Prepaid credit">
+                        +R{bal}
+                      </span>
+                    )}
+                    {due > 0 && status !== 'Paid' && (
+                      <span className="text-xs text-error" title="Outstanding">
+                        −R{due}
+                      </span>
+                    )}
+                  </div>
                 </td>
 
                 {/* Visits */}
@@ -89,57 +102,58 @@ export default function TableList({
                 </td>
 
                 {/* Actions */}
-                <td className="flex flex-wrap gap-1">
-                  {c.currentlyInGym ? (
-                    <button
-                      className="btn btn-xs btn-warning"
-                      onClick={() => handleCheckOut(c._id)}
-                    >
-                      Check Out
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-xs btn-info"
-                      onClick={() => handleCheckIn(c._id)}
-                    >
-                      Check In
-                    </button>
-                  )}
+                <td>
+                  <div className="flex flex-wrap gap-1">
+                    {c.currentlyInGym ? (
+                      <button
+                        className="btn btn-xs btn-warning"
+                        onClick={() => handleCheckOut(c._id)}
+                      >
+                        Check Out
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-xs btn-info"
+                        onClick={() => handleCheckIn(c._id)}
+                      >
+                        Check In
+                      </button>
+                    )}
 
-                  {paid ? (
-                    <button
-                      className="btn btn-xs btn-ghost"
-                      onClick={() => handleMarkUnpaid(c._id)}
-                    >
-                      Unpaid
-                    </button>
-                  ) : (
                     <button
                       className="btn btn-xs btn-success"
-                      onClick={() => handleMarkPaid(c._id)}
+                      onClick={() => handlePay(c)}
                     >
-                      Paid
+                      Pay
                     </button>
-                  )}
 
-                  <button
-                    className="btn btn-xs btn-outline btn-info"
-                    onClick={() => handleOpen('edit', c)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="btn btn-xs btn-outline btn-error"
-                    onClick={() => handleDelete(c._id)}
-                  >
-                    Delete
-                  </button>
+                    <button
+                      className="btn btn-xs btn-outline"
+                      onClick={() => handleLedger(c)}
+                    >
+                      Ledger
+                    </button>
+
+                    <button
+                      className="btn btn-xs btn-outline btn-info"
+                      onClick={() => handleOpen('edit', c)}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      className="btn btn-xs btn-outline btn-error"
+                      onClick={() => handleDelete(c._id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
           })}
 
-          {filteredClients.length === 0 && (
+          {tableData.length === 0 && (
             <tr>
               <td colSpan="10" className="text-center text-gray-500 py-4">
                 No clients found.

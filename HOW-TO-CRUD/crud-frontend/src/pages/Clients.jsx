@@ -3,6 +3,8 @@ import axios from 'axios';
 import NavBar from '../components/Navbar';
 import TableList from '../components/TableList';
 import ClientModal from '../components/ClientModal';
+import PayModal from '../components/payments/PayModal';
+import LedgerModal from '../components/LedgerModal';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -15,6 +17,11 @@ export default function Clients() {
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [payOpen, setPayOpen] = useState(false);
+  const [payClient, setPayClient] = useState(null);
+  const [ledgerOpen, setLedgerOpen] = useState(false);
+  const [ledgerClient, setLedgerClient] = useState(null);
 
   // ---- auth header (JWT) ----
   const authHeader = () => ({
@@ -141,6 +148,32 @@ export default function Clients() {
     }
   };
 
+  // ---- payment modal ----
+  const handlePay = (client) => {
+    setPayClient(client);
+    setPayOpen(true);
+  };
+
+  const submitPay = async (amount, method, note) => {
+    try {
+      await axios.post(
+        `${API_URL}/api/clients/pay`,
+        { id: payClient._id, amount, method, note },
+        authHeader()
+      );
+      setPayOpen(false);
+      fetchClients();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Payment failed');
+    }
+  };
+
+  // ---- ledger modal ----
+  const handleLedger = (client) => {
+    setLedgerClient(client);
+    setLedgerOpen(true);
+  };
+
   // ---- client-side filter + search ----
   const filteredData = tableData.filter((c) => {
     if (searchTerm) {
@@ -148,9 +181,9 @@ export default function Clients() {
       const hay = `${c.FirstName} ${c.LastName} ${c.UserID} ${c.email} ${c.phone}`.toLowerCase();
       if (!hay.includes(s)) return false;
     }
-    if (filterStatus === 'Paid'   && c.payment?.status !== 'Paid')   return false;
+    if (filterStatus === 'Paid' && c.payment?.status !== 'Paid') return false;
     if (filterStatus === 'Unpaid' && c.payment?.status !== 'Unpaid') return false;
-    if (filterStatus === 'InGym'  && !c.currentlyInGym)              return false;
+    if (filterStatus === 'InGym' && !c.currentlyInGym) return false;
     return true;
   });
 
@@ -183,7 +216,7 @@ export default function Clients() {
       </div>
 
       {loading && <p className="p-4 text-gray-500">Loading clients…</p>}
-      {error   && <p className="p-4 text-red-500">{error}</p>}
+      {error && <p className="p-4 text-red-500">{error}</p>}
 
       {!loading && !error && (
         <TableList
@@ -194,6 +227,8 @@ export default function Clients() {
           handleMarkUnpaid={handleMarkUnpaid}
           handleCheckIn={handleCheckIn}
           handleCheckOut={handleCheckOut}
+          handlePay={handlePay}
+          handleLedger={handleLedger}
         />
       )}
 
@@ -204,6 +239,23 @@ export default function Clients() {
           OnSubmit={handleSubmit}
           mode={modalMode}
           clientData={clientData}
+        />
+      )}
+
+      {payOpen && (
+        <PayModal
+          isOpen={payOpen}
+          onClose={() => setPayOpen(false)}
+          client={payClient}
+          onSubmit={submitPay}
+        />
+      )}
+
+      {ledgerOpen && (
+        <LedgerModal
+          isOpen={ledgerOpen}
+          onClose={() => setLedgerOpen(false)}
+          client={ledgerClient}
         />
       )}
     </>

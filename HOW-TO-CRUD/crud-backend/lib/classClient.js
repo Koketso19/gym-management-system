@@ -8,6 +8,8 @@ const client   = require('../db_schema/client');
 const checkIn  = require('../db_schema/checkIn');
 const moment   = require('moment');
 const formidable = require('formidable');
+const PaymentService = require('./classPayment');
+const ps = new PaymentService();
 
 // ================================================================
 // HELPERS
@@ -270,62 +272,29 @@ module.exports = class Client {
    * Mark payment as Paid
    * USAGE: await c.MarkPaid(clientId, 'admin')
    */
-  async MarkPaid(clientId, markedBy, amount) {
-    try {
-      const Rec = await client.findById(clientId);
-      if (!Rec) return { Err: 'Client not found' };
-
-      const now      = moment().format('YYYY-MM-DD HH:mm:ss');
-      const month    = moment().format('YYYY-MM');
-      const payAmt   = Number(amount) || Rec.membership?.rate || 500;
-
-      Rec.payment = {
-        currentMonth: month,
-        status      : 'Paid',
-        paidAmount  : payAmt,
-        dueAmount   : 0,
-        paidAt      : now,
-        markedBy    : markedBy || 'admin'
-      };
-      Rec.LastUpdate     = now;
-      Rec.LastUpdateUser = markedBy || 'admin';
-
-      const SavedDoc = await Rec.save();
-      return { SavedDoc };
-    } catch (err) {
-      return { Err: err };
-    }
+async MarkPaid(clientId, markedBy, amount) {
+  try {
+    const Rec = await client.findById(clientId);
+    if (!Rec) return { Err: 'Client not found' };
+    const out = await ps.recordPayment(Rec, Number(amount) || Rec.membership.rate, {
+      method: 'Cash', paidBy: markedBy, note: ''
+    });
+    return { SavedDoc: out.client, Payment: out.payment };
+  } catch (err) {
+    return { Err: err };
   }
+}
 
-  /**
-   * Mark payment as Unpaid
-   */
-  async MarkUnpaid(clientId, markedBy) {
-    try {
-      const Rec = await client.findById(clientId);
-      if (!Rec) return { Err: 'Client not found' };
-
-      const now    = moment().format('YYYY-MM-DD HH:mm:ss');
-      const month  = moment().format('YYYY-MM');
-      const amount = Rec.membership?.rate || 500;
-
-      Rec.payment = {
-        currentMonth: month,
-        status      : 'Unpaid',
-        paidAmount  : 0,
-        dueAmount   : amount,
-        paidAt      : null,
-        markedBy    : markedBy || 'admin'
-      };
-      Rec.LastUpdate     = now;
-      Rec.LastUpdateUser = markedBy || 'admin';
-
-      const SavedDoc = await Rec.save();
-      return { SavedDoc };
-    } catch (err) {
-      return { Err: err };
-    }
+async MarkUnpaid(clientId, markedBy) {
+  try {
+    const Rec = await client.findById(clientId);
+    if (!Rec) return { Err: 'Client not found' };
+    const updated = await ps.clearMonth(Rec, Rec.payment.currentMonth);
+    return { SavedDoc: updated };
+  } catch (err) {
+    return { Err: err };
   }
+}
 
   // ================================================================
   // CHECK-IN / CHECK-OUT — the digital book
