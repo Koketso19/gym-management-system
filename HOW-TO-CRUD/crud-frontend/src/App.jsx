@@ -11,36 +11,68 @@ import CheckInLog from './pages/CheckInLog';
 import InGym from './pages/InGym';
 import Users from './pages/workers';
 import Settings from './pages/Settings';
+import ClientDetail from './pages/ClientDetail';
+import Clock from './pages/Clock';  
 
 import './App.css';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // ✅ Initialize synchronously from localStorage so a refresh 
+  //    on any page stays on that page (no bounce to /login or /)
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!localStorage.getItem('token')
+  );
   const [gymName, setGymName] = useState('Iron Temple Gym');
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-
-    // load gym name from settings (localStorage for now)
+    // --- Load gym name from settings ---
     try {
       const s = JSON.parse(localStorage.getItem('gym_settings') || '{}');
       if (s.gymName) setGymName(s.gymName);
     } catch {}
+
+    // --- Auto-logout if the stored token is already expired ---
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp * 1000 < Date.now()) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('user');
+          setIsAuthenticated(false);
+        }
+      } catch {
+        // malformed token — clear and force login
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('user');
+        setIsAuthenticated(false);
+      }
+    }
   }, []);
 
   const handleLogin = () => setIsAuthenticated(true);
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+  };
+
   return (
     <Router>
       <Routes>
+        {/* ---- Public: login ---- */}
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/" /> : <AuthPage onLogin={handleLogin} />
+            isAuthenticated ? <Navigate to="/" replace /> : <AuthPage onLogin={handleLogin} />
           }
         />
 
+        {/* ---- Private: everything else ---- */}
         <Route
           path="/*"
           element={
@@ -69,23 +101,25 @@ function App() {
                   {/* ---- Page content ---- */}
                   <main className="p-4 min-h-screen">
                     <Routes>
-                      <Route path="/"          element={<Home />} />
-                      <Route path="/in-gym"    element={<InGym />} />
-                      <Route path="/clients"   element={<Clients />} />
-                      <Route path="/payments"  element={<Payments />} />
-                      <Route path="/today"     element={<TodayVisits />} />
-                      <Route path="/history"   element={<CheckInLog />} />
-                      <Route path="/users"     element={<Users />} />
-                      <Route path="/settings"  element={<Settings />} />
-                      <Route path="*"          element={<Navigate to="/" />} />
+                      <Route path="/"             element={<Home />} />
+                      <Route path="/in-gym"       element={<InGym />} />
+                      <Route path="/clients"      element={<Clients />} />
+                      <Route path="/clients/:id"  element={<ClientDetail />} />
+                      <Route path="/payments"     element={<Payments />} />
+                      <Route path="/today"        element={<TodayVisits />} />
+                      <Route path="/history"      element={<CheckInLog />} />
+                      <Route path="/users"        element={<Users />} />
+                      <Route path="/settings"     element={<Settings />} />
+                      <Route path="/clock"        element={<Clock />} />
+                      <Route path="*"             element={<Navigate to="/" replace />} />
                     </Routes>
                   </main>
                 </div>
 
-                <Sidebar />
+                <Sidebar onLogout={handleLogout} />
               </div>
             ) : (
-              <Navigate to="/login" />
+              <Navigate to="/login" replace />
             )
           }
         />

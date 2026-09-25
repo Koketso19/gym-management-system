@@ -14,12 +14,14 @@ const { verifyToken } = require('../../middleware/authMiddleware');
 const ClientLib = require('../../lib/classClient');
 const LogLib    = require('../../lib/classLogging');
 const ParamLib  = require('../../lib/classParam');
+const PaymentService = require('../../lib/classPayment');
+
 
 // ---- INITIALIZE ----
 const c     = new ClientLib();
 const log   = new LogLib();
 const param = new ParamLib();
-
+const ps = new PaymentService();
 // ================================================================
 // POST /api/clients/create
 // ================================================================
@@ -249,9 +251,10 @@ router.post('/api/clients/delete',  async function (req, res) {
 // ================================================================
 // POST /api/clients/mark-paid   { id, amount? }
 // ================================================================
-router.post('/api/clients/mark-paid',  async function (req, res) {
+router.post('/api/clients/mark-paid',  verifyToken, async function (req, res) {
   console.log('POST /api/clients/mark-paid', req.body);
-
+console.log('mark-paid — req.user:', req.user);
+  console.log('mark-paid — headers.auth:', req.headers.authorization);
   try {
     const { id, amount } = req.body;
     if (!id) return res.status(400).json({ success: false, message: 'Client ID required' });
@@ -389,6 +392,82 @@ router.post('/api/clients/history',  async function (req, res) {
 
   } catch (err) {
     console.error('Get history error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================================================================
+// POST /api/clients/pay   { id, amount, method, note }
+// ================================================================
+router.post('/api/clients/pay', verifyToken, async function (req, res) {
+  try {
+    const { id, amount, method, note } = req.body;
+    if (!id || !amount) {
+      return res.status(400).json({ success: false, message: 'id and amount required' });
+    }
+
+    const result = await c.FindOneRec({ _id: id });
+    if (!result.Rec) return res.status(404).json({ success: false, message: 'Client not found' });
+
+    const out = await ps.recordPayment(result.Rec, Number(amount), {
+      method, note, paidBy: req.user.username
+    });
+
+    res.json({ success: true, payment: out.payment, client: out.client });
+  } catch (err) {
+    console.error('pay error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================================================================
+// POST /api/clients/ledger   { id, year? }
+// ================================================================
+router.post('/api/clients/ledger', verifyToken, async function (req, res) {
+  try {
+    const { id, year } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'id required' });
+
+    const result = await c.FindOneRec({ _id: id });
+    if (!result.Rec) return res.status(404).json({ success: false, message: 'Client not found' });
+
+    const y = year || moment().format('YYYY');
+    const ledger   = await ps.getYearLedger(result.Rec, y);
+    const payments = await ps.listPayments(id);
+
+    res.json({ success: true, year: y, ledger, payments });
+  } catch (err) {
+    console.error('ledger error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================================================================
+// POST /api/clients/reverse-payment   { id, paymentId?, reason? }
+// ================================================================
+router.post('/api/clients/reverse-payment', verifyToken, async function (req, res) {
+  console.log('=== REVERSE-PAYMENT HIT ===', req.body);
+
+  try {
+    const { id, paymentId, reason } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'Client ID required' });
+
+    const who = req.user?.username || 'admin';
+    const result = await c.RefundPayment(id, paymentId, who, reason);
+    console.log('  RefundPayment result:', result);
+
+    if (result.Err) {
+      return res.status(400).json({ success: false, error: String(result.Err.message || result.Err) });
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment reversed',
+      client : result.SavedDoc,
+      refund : result.Refund
+    });
+  } catch (err) {
+    console.error('reverse-payment error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

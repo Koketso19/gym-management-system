@@ -167,7 +167,77 @@ class PaymentService {
     await client.save();
     return client;
   }
+  // ----------------------------------------------------------
+  // Refund the most recent payment (or a specific one).
+  // Writes a NEGATIVE payment row — never deletes anything.
+  // ----------------------------------------------------------
+ // ----------------------------------------------------------
+// Refund the most recent positive payment (or a specific one).
+// Writes a NEGATIVE payment row — never deletes anything.
+// No "already refunded" guard — the manager can undo any
+// number of recent payments.
+// ----------------------------------------------------------
+async refundPayment(client, paymentId, markedBy, reason) {
+  try {
+    // 1) Find the payment to reverse
+    let original;
+    if (paymentId) {
+      // Specific payment — must be positive and belong to this client
+      original = await Payment.findOne({
+        _id     : paymentId,
+        clientId: client._id,
+        amount  : { $gt: 0 }
+      });
+    } else {
+      // Most recent POSITIVE payment (skip previous refunds)
+      original = await Payment.findOne({
+        clientId: client._id,
+        amount  : { $gt: 0 }
+      }).sort({ paidAt: -1 });
+    }
 
+    if (!original) return { Err: 'No payment to refund' };
+
+    // 2) Build negative allocations mirroring the original
+    const now  = moment();
+    const time = now.format('YYYY-MM-DD HH:mm:ss');
+    const year = now.format('YYYY');
+
+    const allocations = (original.allocations || []).map(a => ({
+      month : a.month,
+      amount: -a.amount
+    }));
+
+    // 3) Save the refund as its own payment row
+    const refund = await Payment.create({
+      clientId : client._id,
+      UserID   : client.UserID,
+      FirstName: client.FirstName,
+      LastName : client.LastName,
+      amount   : -original.amount,
+      method   : original.method,
+      paidAt   : time,
+      paidBy   : markedBy || 'admin',
+      note     : reason ? `Refund: ${reason}` : 'Refund',
+      allocations,
+      year,
+      meta: { refundsPaymentId: original._id.toString() }
+    });
+
+    // 4) Recompute client summary
+    await this.recomputeSummary(client);
+    client.LastUpdate     = time;
+    client.LastUpdateUser = markedBy || 'admin';
+    await client.save();
+
+    refund.balanceAfter = client.payment.balance;
+    await refund.save();
+
+    return { refund, client };
+  } catch (err) {
+    return { Err: err.message || err };
+  }
+}
   // ----------------------------------------------------------
   // Full year ledger for a client
   // ----------------------------------------------------------

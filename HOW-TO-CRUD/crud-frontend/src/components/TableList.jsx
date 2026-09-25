@@ -1,12 +1,10 @@
+import { Link } from 'react-router-dom';
+
 export default function TableList({
   tableData = [],
   handleOpen,
-  handleDelete,
   handleMarkPaid,
-  handleMarkUnpaid,
-  handleCheckIn,
-  handleCheckOut,
-  handlePay,
+  handleRefund,
   handleLedger,
 }) {
   const badgeClass = (status) =>
@@ -46,29 +44,25 @@ export default function TableList({
                   idx % 2 === 0 ? 'bg-base-100' : 'bg-base-200'
                 } hover:bg-base-300`}
               >
-                {/* Name */}
+                {/* Name → link to detail page */}
                 <td className="border-r border-base-300 font-medium">
-                  {c.FirstName} {c.LastName}
+                  <Link
+                    to={`/clients/${c._id}`}
+                    className="link link-primary hover:underline"
+                  >
+                    {c.FirstName} {c.LastName}
+                  </Link>
                 </td>
 
-                {/* UserID */}
                 <td className="border-r border-base-300">{c.UserID}</td>
-
-                {/* Email */}
                 <td className="border-r border-base-300">{c.email}</td>
-
-                {/* Phone */}
                 <td className="border-r border-base-300">{c.phone}</td>
-
-                {/* Rate */}
                 <td className="border-r border-base-300">R {rate}</td>
 
                 {/* Payment badge + credit + due */}
                 <td className="border-r border-base-300">
                   <div className="flex flex-wrap items-center gap-1">
-                    <span className={`badge ${badgeClass(status)}`}>
-                      {status}
-                    </span>
+                    <span className={`badge ${badgeClass(status)}`}>{status}</span>
                     {bal > 0 && (
                       <span className="badge badge-info" title="Prepaid credit">
                         +R{bal}
@@ -82,49 +76,37 @@ export default function TableList({
                   </div>
                 </td>
 
-                {/* Visits */}
                 <td className="border-r border-base-300">
                   {c.totalVisitsThisMonth || 0}
                 </td>
 
-                {/* In Gym badge */}
                 <td className="border-r border-base-300">
-                  {c.currentlyInGym ? (
-                    <span className="badge badge-info">Inside</span>
-                  ) : (
-                    <span className="text-xs opacity-40">—</span>
-                  )}
+                  {c.currentlyInGym
+                    ? <span className="badge badge-info">Inside</span>
+                    : <span className="text-xs opacity-40">—</span>}
                 </td>
 
-                {/* Last check-in */}
                 <td className="border-r border-base-300 text-xs">
                   {c.lastCheckIn || '—'}
                 </td>
 
-                {/* Actions */}
+                {/* Actions: Paid | Unpaid | Ledger | Edit */}
                 <td>
                   <div className="flex flex-wrap gap-1">
-                    {c.currentlyInGym ? (
-                      <button
-                        className="btn btn-xs btn-warning"
-                        onClick={() => handleCheckOut(c._id)}
-                      >
-                        Check Out
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-xs btn-info"
-                        onClick={() => handleCheckIn(c._id)}
-                      >
-                        Check In
-                      </button>
-                    )}
-
                     <button
                       className="btn btn-xs btn-success"
-                      onClick={() => handlePay(c)}
+                      onClick={() => handleMarkPaid(c._id)}
+                      title="Record a full monthly payment"
                     >
-                      Pay
+                      Paid
+                    </button>
+
+                    <button
+                      className="btn btn-xs btn-warning"
+                      onClick={() => handleRefund(c._id)}
+                      title="Reverse the most recent payment"
+                    >
+                      Unpaid
                     </button>
 
                     <button
@@ -139,13 +121,6 @@ export default function TableList({
                       onClick={() => handleOpen('edit', c)}
                     >
                       Edit
-                    </button>
-
-                    <button
-                      className="btn btn-xs btn-outline btn-error"
-                      onClick={() => handleDelete(c._id)}
-                    >
-                      Delete
                     </button>
                   </div>
                 </td>

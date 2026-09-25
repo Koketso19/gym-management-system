@@ -20,7 +20,11 @@ var paymentSchema = new Schema({
 
   allocations  : [allocationSchema],
   year         : { type: String, index: true },
-  balanceAfter : { type: Number, default: 0 }
+  balanceAfter : { type: Number, default: 0 },
+
+  meta: {
+    refundsPaymentId: { type: String, default: null }
+  }
 }, { collection: 'Payments' });
 
 paymentSchema.index({ clientId: 1, paidAt: -1 });

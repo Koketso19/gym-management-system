@@ -3,7 +3,6 @@ import axios from 'axios';
 import NavBar from '../components/Navbar';
 import TableList from '../components/TableList';
 import ClientModal from '../components/ClientModal';
-import PayModal from '../components/payments/PayModal';
 import LedgerModal from '../components/LedgerModal';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -18,8 +17,6 @@ export default function Clients() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [payOpen, setPayOpen] = useState(false);
-  const [payClient, setPayClient] = useState(null);
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [ledgerClient, setLedgerClient] = useState(null);
 
@@ -36,7 +33,6 @@ export default function Clients() {
       const response = await axios.get(`${API_URL}/api/clients/list`, authHeader());
       const list = response.data.clients || [];
       setTableData(list);
-      console.log('Fetched clients:', list.length);
     } catch (err) {
       console.error('Error fetching clients:', err.message);
       setError('Failed to load clients');
@@ -79,22 +75,7 @@ export default function Clients() {
     }
   };
 
-  // ---- delete ----
-  const handleDelete = async (clientId) => {
-    if (!window.confirm('Are you sure you want to delete this client?')) return;
-    try {
-      await axios.post(
-        `${API_URL}/api/clients/delete`,
-        { id: clientId },
-        authHeader()
-      );
-      fetchClients();
-    } catch (error) {
-      console.error('Error deleting client:', error);
-    }
-  };
-
-  // ---- mark paid / unpaid ----
+  // ---- mark paid (record full monthly payment) ----
   const handleMarkPaid = async (clientId) => {
     try {
       await axios.post(
@@ -108,65 +89,38 @@ export default function Clients() {
     }
   };
 
-  const handleMarkUnpaid = async (clientId) => {
-    try {
-      await axios.post(
-        `${API_URL}/api/clients/mark-unpaid`,
-        { id: clientId },
-        authHeader()
-      );
-      fetchClients();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to mark unpaid');
-    }
-  };
+const handleRefund = async (clientId) => {
+  const reason = window.prompt(
+    'Reason for refund?',
+    'Marked Paid by mistake'
+  );
+  if (reason === null) return;
 
-  // ---- check in / check out ----
-  const handleCheckIn = async (clientId) => {
-    try {
-      await axios.post(
-        `${API_URL}/api/clients/checkin`,
-        { id: clientId },
-        authHeader()
-      );
-      fetchClients();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to check in');
-    }
-  };
+  try {
+    const res = await axios.post(
+      `${API_URL}/api/clients/reverse-payment`,
+      { id: clientId, reason },
+      authHeader()
+    );
+    console.log('refund success:', res.status, res.data);
+    fetchClients();
+  } catch (err) {
+    console.error('=== REFUND ERROR ===');
+    console.error('status  :', err.response?.status);
+    console.error('data    :', err.response?.data);
+    console.error('message :', err.message);
+    console.error('url     :', err.config?.url);
+    console.error('headers :', err.config?.headers);
+    console.error('payload :', err.config?.data);
 
-  const handleCheckOut = async (clientId) => {
-    try {
-      await axios.post(
-        `${API_URL}/api/clients/checkout`,
-        { id: clientId },
-        authHeader()
-      );
-      fetchClients();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to check out');
-    }
-  };
-
-  // ---- payment modal ----
-  const handlePay = (client) => {
-    setPayClient(client);
-    setPayOpen(true);
-  };
-
-  const submitPay = async (amount, method, note) => {
-    try {
-      await axios.post(
-        `${API_URL}/api/clients/pay`,
-        { id: payClient._id, amount, method, note },
-        authHeader()
-      );
-      setPayOpen(false);
-      fetchClients();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Payment failed');
-    }
-  };
+    const msg =
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      err.message ||
+      'unknown';
+    alert(`Refund failed (${err.response?.status || 'no status'}): ${msg}`);
+  }
+};
 
   // ---- ledger modal ----
   const handleLedger = (client) => {
@@ -181,9 +135,9 @@ export default function Clients() {
       const hay = `${c.FirstName} ${c.LastName} ${c.UserID} ${c.email} ${c.phone}`.toLowerCase();
       if (!hay.includes(s)) return false;
     }
-    if (filterStatus === 'Paid' && c.payment?.status !== 'Paid') return false;
+    if (filterStatus === 'Paid'   && c.payment?.status !== 'Paid')   return false;
     if (filterStatus === 'Unpaid' && c.payment?.status !== 'Unpaid') return false;
-    if (filterStatus === 'InGym' && !c.currentlyInGym) return false;
+    if (filterStatus === 'InGym'  && !c.currentlyInGym)              return false;
     return true;
   });
 
@@ -222,12 +176,8 @@ export default function Clients() {
         <TableList
           tableData={filteredData}
           handleOpen={handleOpen}
-          handleDelete={handleDelete}
           handleMarkPaid={handleMarkPaid}
-          handleMarkUnpaid={handleMarkUnpaid}
-          handleCheckIn={handleCheckIn}
-          handleCheckOut={handleCheckOut}
-          handlePay={handlePay}
+          handleRefund={handleRefund}
           handleLedger={handleLedger}
         />
       )}
@@ -239,15 +189,6 @@ export default function Clients() {
           OnSubmit={handleSubmit}
           mode={modalMode}
           clientData={clientData}
-        />
-      )}
-
-      {payOpen && (
-        <PayModal
-          isOpen={payOpen}
-          onClose={() => setPayOpen(false)}
-          client={payClient}
-          onSubmit={submitPay}
         />
       )}
 

@@ -296,6 +296,19 @@ async MarkUnpaid(clientId, markedBy) {
   }
 }
 
+  async RefundPayment(clientId, paymentId, markedBy, reason) {
+    try {
+      const Rec = await client.findById(clientId);
+      if (!Rec) return { Err: 'Client not found' };
+
+      const out = await ps.refundPayment(Rec, paymentId, markedBy, reason);
+      if (out.Err) return { Err: out.Err };
+
+      return { SavedDoc: out.client, Refund: out.refund };
+    } catch (err) {
+      return { Err: err };
+    }
+  }
   // ================================================================
   // CHECK-IN / CHECK-OUT — the digital book
   // ================================================================

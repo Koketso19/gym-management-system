@@ -438,4 +438,65 @@ router.post('/api/clients/ledger', verifyToken, async function (req, res) {
   }
 });
 
+router.post('/api/clients/reverse-payment', verifyToken, async function (req, res) {
+  console.log('=== REFUND HIT ===');
+  console.log('  body 111111 :', req.body);
+  console.log('  user  :', req.user?.username);
+  console.log('  method:', typeof c.RefundPayment);
+
+  try {
+    const { id, paymentId, reason } = req.body;
+    if (!id) {
+      console.log('  ✗ no id');
+      return res.status(400).json({ success: false, message: 'Client ID required' });
+    }
+
+    const who = req.user?.username || 'admin';
+    const result = await c.RefundPayment(id, paymentId, who, reason);
+    console.log('  result:', result);
+
+    if (result.Err) {
+      console.log('  ✗ RefundPayment returned Err:', result.Err);
+      return res.status(400).json({ success: false, error: String(result.Err.message || result.Err) });
+    }
+
+    try {
+      await log.WriteUserTrToDB(
+        param, 'RefundPayment', who,
+        `Refunded payment for client ${id}${reason ? ' — ' + reason : ''}`, who
+      );
+    } catch (logErr) {
+      console.log('  ⚠ logging failed (non-fatal):', logErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment refunded',
+      client : result.SavedDoc,
+      refund : result.Refund
+    });
+  } catch (err) {
+    console.error('  ✗✗ Refund threw:', err);
+    res.status(500).json({ success: false, error: err.message || String(err) });
+  }
+});
+
+router.post('/api/clients/get-by-userid', verifyToken, async function (req, res) {
+  try {
+    const { UserID } = req.body;
+    if (!UserID) return res.status(400).json({ success: false, message: 'UserID required' });
+
+    const result = await c.FindOneRec({ UserID: UserID.toLowerCase() });
+    if (!result.Rec) {
+      return res.status(404).json({ success: false, message: 'Client not found' });
+    }
+
+    res.json({ success: true, client: result.Rec });
+  } catch (err) {
+    console.error('get-by-userid error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+
 module.exports = router;

@@ -10,6 +10,7 @@ import {
   ShieldCheckIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+    ClockIcon,  
 } from '@heroicons/react/24/outline';
 
 // ---- Menu structure ----
@@ -31,6 +32,7 @@ const NAV_GROUPS = [
   {
     section: 'Activity',
     items: [
+     { to: '/clock',   label: 'Clock In / Out', Icon: ClockIcon },
       { to: '/today',   label: "Today's Visits", Icon: CalendarDaysIcon },
       { to: '/history', label: 'Check-In Log',   Icon: BookOpenIcon },
     ],
