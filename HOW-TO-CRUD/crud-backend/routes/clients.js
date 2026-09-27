@@ -481,22 +481,6 @@ router.post('/api/clients/reverse-payment', verifyToken, async function (req, re
   }
 });
 
-router.post('/api/clients/get-by-userid', verifyToken, async function (req, res) {
-  try {
-    const { UserID } = req.body;
-    if (!UserID) return res.status(400).json({ success: false, message: 'UserID required' });
-
-    const result = await c.FindOneRec({ UserID: UserID.toLowerCase() });
-    if (!result.Rec) {
-      return res.status(404).json({ success: false, message: 'Client not found' });
-    }
-
-    res.json({ success: true, client: result.Rec });
-  } catch (err) {
-    console.error('get-by-userid error:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
 
 
 module.exports = router;

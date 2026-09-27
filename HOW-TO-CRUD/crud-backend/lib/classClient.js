@@ -4,7 +4,7 @@
 // Mirrors the structure of classUser.js
 // ================================================================
 
-const client   = require('../db_schema/client');
+const client   = require('../db_schema/user');
 const checkIn  = require('../db_schema/checkIn');
 const moment   = require('moment');
 const formidable = require('formidable');

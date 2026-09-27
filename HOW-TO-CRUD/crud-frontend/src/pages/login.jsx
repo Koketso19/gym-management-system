@@ -35,15 +35,35 @@ const AuthPage = ({ onLogin }) => {
         return;
       }
 
+      // ---- decode JWT to enrich user object ----
+      let jwtPayload = {};
+      try {
+        jwtPayload = JSON.parse(atob(data.token.split('.')[1]));
+      } catch (e) {
+        console.warn('Could not decode JWT payload', e);
+      }
+
+      const normalizedUser = {
+        ...(data.user || {}),
+        ...jwtPayload,
+        UserID: (
+          data.user?.UserID ||
+          data.user?.username ||
+          jwtPayload.username ||
+          ''
+        ).toLowerCase(),
+        username: data.user?.username || jwtPayload.username || '',
+      };
+
       // ---- save auth state ----
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.role || 'admin');
-      localStorage.setItem('user', JSON.stringify(data.user || {}));
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
 
       console.log('Login OK — role:', data.role);
+      console.log('Stored user:', normalizedUser);
 
       onLogin();
-      // App.jsx will redirect based on role
       navigate('/');
     } catch (err) {
       setError(err.message);
