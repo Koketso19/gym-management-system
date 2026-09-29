@@ -10,10 +10,10 @@ import {
   ShieldCheckIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
-    ClockIcon,  
+  ClockIcon,
 } from '@heroicons/react/24/outline';
+import BrandIcon from './BrandIcon';
 
-// ---- Menu structure ----
 const NAV_GROUPS = [
   {
     section: 'Overview',
@@ -32,7 +32,7 @@ const NAV_GROUPS = [
   {
     section: 'Activity',
     items: [
-     { to: '/clock',   label: 'Clock In / Out', Icon: ClockIcon },
+      { to: '/clock',   label: 'Clock In / Out', Icon: ClockIcon },
       { to: '/today',   label: "Today's Visits", Icon: CalendarDaysIcon },
       { to: '/history', label: 'Check-In Log',   Icon: BookOpenIcon },
     ],
@@ -46,13 +46,24 @@ const NAV_GROUPS = [
   },
 ];
 
-const Sidebar = ({ onLogout }) => {
+const Sidebar = ({ onLogout, gymName = 'Iron Temple' }) => {
   const navigate = useNavigate();
+
+  // Pull user info from localStorage for the footer
+  let user = {};
+  try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+    user.username ||
+    'User';
+  const role = localStorage.getItem('role') || 'member';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('user');
     if (onLogout) onLogout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -61,10 +72,10 @@ const Sidebar = ({ onLogout }) => {
 
       <aside className="menu p-4 w-64 min-h-full bg-base-100 text-base-content flex flex-col">
         {/* Brand */}
-        <div className="flex items-center gap-2 mb-6 px-2">
-          <span className="text-2xl">🏋️</span>
+        <div className="flex items-center gap-3 mb-6 px-2">
+          <BrandIcon className="w-5 h-5" />
           <div>
-            <h2 className="text-base font-bold leading-tight">Iron Temple</h2>
+            <h2 className="text-base font-bold leading-tight">{gymName}</h2>
             <p className="text-xs opacity-60">Gym Management</p>
           </div>
         </div>
@@ -100,8 +111,22 @@ const Sidebar = ({ onLogout }) => {
           ))}
         </div>
 
-        {/* Logout */}
+        {/* User footer */}
         <div className="border-t border-base-300 pt-3">
+          <div className="flex items-center gap-3 px-2 pb-3">
+            <div className="avatar placeholder">
+              <div className="bg-primary text-primary-content rounded-full w-9">
+                <span className="text-sm font-bold">
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{displayName}</p>
+              <p className="text-xs opacity-60 capitalize">{role}</p>
+            </div>
+          </div>
+
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-error hover:bg-error/10 transition"

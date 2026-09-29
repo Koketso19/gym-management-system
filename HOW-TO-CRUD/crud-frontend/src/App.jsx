@@ -12,17 +12,17 @@ import InGym from './pages/InGym';
 import Users from './pages/workers';
 import Settings from './pages/Settings';
 import ClientDetail from './pages/ClientDetail';
-import Clock from './pages/Clock';  
+import Clock from './pages/Clock';
+import BrandIcon from './components/BrandIcon';
 
 import './App.css';
 
 function App() {
-  // ✅ Initialize synchronously from localStorage so a refresh 
-  //    on any page stays on that page (no bounce to /login or /)
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => !!localStorage.getItem('token')
   );
-  const [gymName, setGymName] = useState('Iron Temple Gym');
+  const [gymName, setGymName] = useState('Iron Temple');
+  const [role] = useState(() => localStorage.getItem('role') || 'member');
 
   useEffect(() => {
     // --- Load gym name from settings ---
@@ -43,7 +43,6 @@ function App() {
           setIsAuthenticated(false);
         }
       } catch {
-        // malformed token — clear and force login
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('user');
@@ -82,20 +81,24 @@ function App() {
 
                 <div className="drawer-content flex flex-col">
                   {/* ---- Mobile top bar ---- */}
-                  <header className="lg:hidden sticky top-0 z-30 bg-base-100 border-b border-base-300 px-4 py-3 flex items-center gap-3">
+                  <header className="lg:hidden sticky top-0 z-30 bg-base-100 border-b border-base-300 px-3 py-2 flex items-center gap-3">
                     <label
                       htmlFor="sidebar-toggle"
                       className="btn btn-sm btn-ghost btn-square drawer-button"
                       aria-label="Open menu"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                       </svg>
                     </label>
+
+                    <BrandIcon className="w-4 h-4" />
+
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold truncate">🏋️ {gymName}</p>
+                      <p className="font-bold truncate text-sm">{gymName}</p>
                     </div>
-                    <div className="badge badge-primary badge-sm">Admin</div>
+
+                    <div className="badge badge-primary badge-sm capitalize">{role}</div>
                   </header>
 
                   {/* ---- Page content ---- */}
@@ -116,7 +119,7 @@ function App() {
                   </main>
                 </div>
 
-                <Sidebar onLogout={handleLogout} />
+                <Sidebar onLogout={handleLogout} gymName={gymName} />
               </div>
             ) : (
               <Navigate to="/login" replace />

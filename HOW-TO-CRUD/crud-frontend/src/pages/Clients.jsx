@@ -11,7 +11,7 @@ export default function Clients() {
   const [isOpen, setIsOpen] = useState(false);
   const [modalMode, setModalMode] = useState('add');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('All'); // All | Paid | Unpaid | InGym
+  const [filterStatus, setFilterStatus] = useState('All');
   const [clientData, setClientData] = useState(null);
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,19 +20,16 @@ export default function Clients() {
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [ledgerClient, setLedgerClient] = useState(null);
 
-  // ---- auth header (JWT) ----
   const authHeader = () => ({
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   });
 
-  // ---- fetch clients ----
   const fetchClients = async () => {
     setLoading(true);
     setError('');
     try {
       const response = await axios.get(`${API_URL}/api/clients/list`, authHeader());
-      const list = response.data.clients || [];
-      setTableData(list);
+      setTableData(response.data.clients || []);
     } catch (err) {
       console.error('Error fetching clients:', err.message);
       setError('Failed to load clients');
@@ -41,9 +38,7 @@ export default function Clients() {
     }
   };
 
-  useEffect(() => {
-    fetchClients();
-  }, []);
+  useEffect(() => { fetchClients(); }, []);
 
   const handleOpen = (mode, client) => {
     setClientData(client);
@@ -51,15 +46,10 @@ export default function Clients() {
     setIsOpen(true);
   };
 
-  // ---- create / update ----
   const handleSubmit = async (newClientData) => {
     try {
       if (modalMode === 'add') {
-        await axios.post(
-          `${API_URL}/api/clients/create`,
-          newClientData,
-          authHeader()
-        );
+        await axios.post(`${API_URL}/api/clients/create`, newClientData, authHeader());
       } else {
         await axios.post(
           `${API_URL}/api/clients/update`,
@@ -75,69 +65,50 @@ export default function Clients() {
     }
   };
 
-  // ---- mark paid (record full monthly payment) ----
   const handleMarkPaid = async (clientId) => {
     try {
-      await axios.post(
-        `${API_URL}/api/clients/mark-paid`,
-        { id: clientId },
-        authHeader()
-      );
+      await axios.post(`${API_URL}/api/clients/mark-paid`, { id: clientId }, authHeader());
       fetchClients();
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to mark paid');
     }
   };
 
-const handleRefund = async (clientId) => {
-  const reason = window.prompt(
-    'Reason for refund?',
-    'Marked Paid by mistake'
-  );
-  if (reason === null) return;
+  const handleRefund = async (clientId) => {
+    const reason = window.prompt('Reason for refund?', 'Marked Paid by mistake');
+    if (reason === null) return;
 
-  try {
-    const res = await axios.post(
-      `${API_URL}/api/clients/reverse-payment`,
-      { id: clientId, reason },
-      authHeader()
-    );
-    console.log('refund success:', res.status, res.data);
-    fetchClients();
-  } catch (err) {
-    console.error('=== REFUND ERROR ===');
-    console.error('status  :', err.response?.status);
-    console.error('data    :', err.response?.data);
-    console.error('message :', err.message);
-    console.error('url     :', err.config?.url);
-    console.error('headers :', err.config?.headers);
-    console.error('payload :', err.config?.data);
+    try {
+      await axios.post(
+        `${API_URL}/api/clients/reverse-payment`,
+        { id: clientId, reason },
+        authHeader()
+      );
+      fetchClients();
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'unknown';
+      alert(`Refund failed: ${msg}`);
+    }
+  };
 
-    const msg =
-      err.response?.data?.error ||
-      err.response?.data?.message ||
-      err.message ||
-      'unknown';
-    alert(`Refund failed (${err.response?.status || 'no status'}): ${msg}`);
-  }
-};
-
-  // ---- ledger modal ----
   const handleLedger = (client) => {
     setLedgerClient(client);
     setLedgerOpen(true);
   };
 
-  // ---- client-side filter + search ----
   const filteredData = tableData.filter((c) => {
     if (searchTerm) {
       const s = searchTerm.toLowerCase();
       const hay = `${c.FirstName} ${c.LastName} ${c.UserID} ${c.email} ${c.phone}`.toLowerCase();
       if (!hay.includes(s)) return false;
     }
-    if (filterStatus === 'Paid'   && c.payment?.status !== 'Paid')   return false;
+    if (filterStatus === 'Paid' && c.payment?.status !== 'Paid') return false;
     if (filterStatus === 'Unpaid' && c.payment?.status !== 'Unpaid') return false;
-    if (filterStatus === 'InGym'  && !c.currentlyInGym)              return false;
+    if (filterStatus === 'InGym' && !c.currentlyInGym) return false;
     return true;
   });
 
@@ -149,13 +120,13 @@ const handleRefund = async (clientId) => {
         onSearch={setSearchTerm}
       />
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 px-4 py-3">
+      {/* Filter tabs — scrollable on mobile */}
+      <div className="flex items-center gap-2 px-3 md:px-4 py-2 overflow-x-auto">
         {['All', 'Paid', 'Unpaid', 'InGym'].map((f) => (
           <button
             key={f}
             onClick={() => setFilterStatus(f)}
-            className={`px-4 py-1 rounded-full text-sm border ${
+            className={`px-3 py-1 rounded-full text-xs md:text-sm border whitespace-nowrap transition ${
               filterStatus === f
                 ? 'bg-blue-600 text-white border-blue-600'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -164,7 +135,7 @@ const handleRefund = async (clientId) => {
             {f}
           </button>
         ))}
-        <div className="ml-auto text-sm text-gray-500">
+        <div className="ml-auto text-xs md:text-sm text-gray-500 pl-2 shrink-0">
           {filteredData.length} / {tableData.length}
         </div>
       </div>

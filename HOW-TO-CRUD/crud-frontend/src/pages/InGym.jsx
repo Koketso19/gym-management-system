@@ -1,92 +1,185 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const DateManagement = () => {
-  const [form, setForm] = useState({
-    date: '',
-    type: '',
-    note: ''
+const API_URL = import.meta.env.VITE_API_URL;
+
+export default function InGym() {
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [now, setNow] = useState(new Date());
+
+  const authHeader = () => ({
+    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   });
 
-  const [events, setEvents] = useState([]);
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const fetchInGym = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/clients/in-gym`, authHeader());
+      setClients(res.data.clients || []);
+      setError('');
+    } catch (err) {
+      console.error('Error fetching in-gym:', err);
+      setError('Failed to load gym members');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleAddEvent = () => {
-    if (!form.date || !form.type) return;
-    setEvents((prev) => [...prev, form]);
-    setForm({ date: '', type: '', note: '' });
+  // initial fetch + auto-refresh every 30s
+  useEffect(() => {
+    fetchInGym();
+    const interval = setInterval(fetchInGym, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // live clock (updates every second) — for duration display
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // check out a member
+  const handleCheckOut = async (id, name) => {
+    if (!window.confirm(`Check out ${name}?`)) return;
+    try {
+      await axios.post(
+        `${API_URL}/api/clients/checkout`,
+        { id },
+        authHeader()
+      );
+      fetchInGym();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to check out');
+    }
   };
 
-  const handleDelete = (index) => {
-    setEvents(events.filter((_, i) => i !== index));
+  // duration from check-in time to now
+  const duration = (checkInStr) => {
+    if (!checkInStr) return '—';
+    const start = new Date(checkInStr.replace(' ', 'T'));
+    const diffMs = now - start;
+    if (diffMs < 0) return 'just now';
+    const mins = Math.floor(diffMs / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
   return (
-    <div className="bg-base-100 shadow-lg rounded-xl p-6 max-w-3xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6 text-primary">📅 Date Management</h2>
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">In Gym Now</h1>
+          <p className="text-sm text-base-content/60">
+            Members currently checked in — auto-refreshes every 30s
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <input
-          type="date"
-          name="date"
-          value={form.date}
-          onChange={handleChange}
-          className="input input-bordered w-full"
-          placeholder="Select date"
-        />
-        <select
-          name="type"
-          value={form.type}
-          onChange={handleChange}
-          className="select select-bordered w-full"
-        >
-          <option value="">Select Type</option>
-          <option>Rent Due</option>
-          <option>Lease Start</option>
-          <option>Lease End</option>
-          <option>Maintenance</option>
-          <option>Move-In</option>
-          <option>Move-Out</option>
-          <option>Other</option>
-        </select>
-        <input
-          type="text"
-          name="note"
-          value={form.note}
-          onChange={handleChange}
-          className="input input-bordered w-full"
-          placeholder="Optional note"
-        />
+        <div className="flex items-center gap-3">
+          <div className="badge badge-lg badge-primary gap-2">
+            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+            {clients.length} inside
+          </div>
+          <button
+            onClick={fetchInGym}
+            className="btn btn-sm btn-outline"
+          >
+            🔄 Refresh
+          </button>
+        </div>
       </div>
 
-      <button className="btn btn-primary w-full md:w-auto" onClick={handleAddEvent}>
-        ➕ Add Date Event
-      </button>
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-12">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      )}
 
-      <div className="mt-8">
-        {events.length === 0 ? (
-          <p className="text-gray-500">No events yet.</p>
-        ) : (
-          <ul className="space-y-4">
-            {events.map((event, idx) => (
-              <li key={idx} className="bg-base-200 p-4 rounded-lg flex justify-between items-start">
-                <div>
-                  <p className="font-bold text-lg">{event.type}</p>
-                  <p>{new Date(event.date).toDateString()}</p>
-                  {event.note && <p className="text-sm text-gray-600 italic">{event.note}</p>}
+      {/* Error */}
+      {error && !loading && (
+        <div className="alert alert-error">
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && !error && clients.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="text-6xl mb-4">🏋️</div>
+          <p className="text-lg font-medium">Nobody is in the gym right now</p>
+          <p className="text-sm text-base-content/60">
+            Checked-in members will appear here
+          </p>
+        </div>
+      )}
+
+      {/* Grid of cards */}
+      {!loading && !error && clients.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {clients.map((c) => {
+            const fullName = `${c.FirstName} ${c.LastName}`;
+            return (
+              <div
+                key={c._id}
+                className="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition"
+              >
+                <div className="card-body p-5">
+                  {/* Avatar + name */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="avatar placeholder">
+                      <div className="bg-primary text-primary-content rounded-full w-12">
+                        <span className="text-lg font-bold">
+                          {c.FirstName?.[0]}{c.LastName?.[0]}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{fullName}</p>
+                      <p className="text-xs text-base-content/60 truncate">
+                        {c.UserID}
+                      </p>
+                    </div>
+                    <span className="badge badge-success badge-sm">Inside</span>
+                  </div>
+
+                  {/* Info rows */}
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-base-content/60">Phone</span>
+                      <span className="font-medium">{c.phone || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-base-content/60">Checked in</span>
+                      <span className="font-medium">
+                        {c.lastCheckIn?.split(' ')[1] || '—'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-base-content/60">Duration</span>
+                      <span className="font-medium text-primary">
+                        {duration(c.lastCheckIn)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action */}
+                  <div className="card-actions justify-end mt-3">
+                    <button
+                      onClick={() => handleCheckOut(c._id, fullName)}
+                      className="btn btn-sm btn-warning"
+                    >
+                      Check Out
+                    </button>
+                  </div>
                 </div>
-                <button className="btn btn-sm btn-error" onClick={() => handleDelete(idx)}>
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
-};
-
-export default DateManagement;
+}

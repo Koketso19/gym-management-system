@@ -1,4 +1,7 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+
+const PAGE_SIZE = 10;
 
 export default function TableList({
   tableData = [],
@@ -7,136 +10,218 @@ export default function TableList({
   handleRefund,
   handleLedger,
 }) {
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(tableData.length / PAGE_SIZE));
+
+  // Clamp page if data shrinks
+  const safePage = Math.min(page, totalPages);
+
+  const paginated = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return tableData.slice(start, start + PAGE_SIZE);
+  }, [tableData, safePage]);
+
   const badgeClass = (status) =>
     status === 'Paid'    ? 'badge-success' :
     status === 'Partial' ? 'badge-warning' :
                            'badge-error';
 
+  const Actions = ({ c }) => (
+    <div className="flex flex-wrap gap-1">
+      <button
+        className="btn btn-xs btn-success"
+        onClick={() => handleMarkPaid(c._id)}
+      >
+        Paid
+      </button>
+      <button
+        className="btn btn-xs btn-warning"
+        onClick={() => handleRefund(c._id)}
+      >
+        Unpaid
+      </button>
+      <button
+        className="btn btn-xs btn-outline"
+        onClick={() => handleLedger(c)}
+      >
+        Ledger
+      </button>
+      <button
+        className="btn btn-xs btn-outline btn-info"
+        onClick={() => handleOpen('edit', c)}
+      >
+        Edit
+      </button>
+    </div>
+  );
+
+  const Pagination = () => (
+    <div className="flex items-center justify-between mt-4 px-1">
+      <button
+        className="btn btn-sm btn-outline"
+        onClick={() => setPage((p) => Math.max(1, p - 1))}
+        disabled={safePage <= 1}
+      >
+        ← Prev
+      </button>
+
+      <div className="text-sm text-gray-500">
+        Page <b>{safePage}</b> of <b>{totalPages}</b>
+        <span className="hidden sm:inline">
+          {' '}· {tableData.length} total
+        </span>
+      </div>
+
+      <button
+        className="btn btn-sm btn-outline"
+        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+        disabled={safePage >= totalPages}
+      >
+        Next →
+      </button>
+    </div>
+  );
+
+  if (tableData.length === 0) {
+    return (
+      <div className="px-4 pb-6">
+        <div className="card bg-base-100 border border-base-300">
+          <div className="card-body text-center text-gray-500 py-10">
+            No clients found.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-x-auto px-4 pb-6">
-      <table className="table w-full border border-base-300 rounded-lg shadow-sm">
-        <thead className="bg-base-200">
-          <tr>
-            <th className="text-left border-r border-base-300">Name</th>
-            <th className="text-left border-r border-base-300">UserID</th>
-            <th className="text-left border-r border-base-300">Email</th>
-            <th className="text-left border-r border-base-300">Phone</th>
-            <th className="text-left border-r border-base-300">Rate</th>
-            <th className="text-left border-r border-base-300">Payment</th>
-            <th className="text-left border-r border-base-300">Visits</th>
-            <th className="text-left border-r border-base-300">In Gym</th>
-            <th className="text-left border-r border-base-300">Last Check-In</th>
-            <th className="text-left">Actions</th>
-          </tr>
-        </thead>
+    <div className="px-4 pb-6">
 
-        <tbody>
-          {tableData.map((c, idx) => {
-            const status = c.payment?.status || 'Unpaid';
-            const rate   = c.membership?.rate ?? 0;
-            const bal    = c.payment?.balance || 0;
-            const due    = c.payment?.dueThisMonth || 0;
+      {/* ============================================================
+          PHONE (below md) — simple list: name + actions only
+          ============================================================ */}
+      <div className="md:hidden space-y-2">
+        {paginated.map((c, idx) => {
+          const status = c.payment?.status || 'Unpaid';
 
-            return (
-              <tr
-                key={c._id}
-                className={`transition-colors duration-200 ${
-                  idx % 2 === 0 ? 'bg-base-100' : 'bg-base-200'
-                } hover:bg-base-300`}
-              >
-                {/* Name → link to detail page */}
-                <td className="border-r border-base-300 font-medium">
-                  <Link
-                    to={`/clients/${c._id}`}
-                    className="link link-primary hover:underline"
-                  >
-                    {c.FirstName} {c.LastName}
-                  </Link>
-                </td>
+          return (
+            <div
+              key={c._id}
+              className={`rounded-lg border border-base-300 p-3 ${
+                idx % 2 === 0 ? 'bg-base-100' : 'bg-base-200'
+              }`}
+            >
+              {/* Row 1: name + status badge */}
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <Link
+                  to={`/clients/${c._id}`}
+                  className="link link-primary font-semibold truncate"
+                >
+                  {c.FirstName} {c.LastName}
+                </Link>
+                <span className={`badge badge-sm ${badgeClass(status)} shrink-0`}>
+                  {status}
+                </span>
+              </div>
 
-                <td className="border-r border-base-300">{c.UserID}</td>
-                <td className="border-r border-base-300">{c.email}</td>
-                <td className="border-r border-base-300">{c.phone}</td>
-                <td className="border-r border-base-300">R {rate}</td>
+              {/* Row 2: actions */}
+              <Actions c={c} />
+            </div>
+          );
+        })}
+      </div>
 
-                {/* Payment badge + credit + due */}
-                <td className="border-r border-base-300">
-                  <div className="flex flex-wrap items-center gap-1">
-                    <span className={`badge ${badgeClass(status)}`}>{status}</span>
-                    {bal > 0 && (
-                      <span className="badge badge-info" title="Prepaid credit">
-                        +R{bal}
-                      </span>
-                    )}
-                    {due > 0 && status !== 'Paid' && (
-                      <span className="text-xs text-error" title="Outstanding">
-                        −R{due}
-                      </span>
-                    )}
-                  </div>
-                </td>
-
-                <td className="border-r border-base-300">
-                  {c.totalVisitsThisMonth || 0}
-                </td>
-
-                <td className="border-r border-base-300">
-                  {c.currentlyInGym
-                    ? <span className="badge badge-info">Inside</span>
-                    : <span className="text-xs opacity-40">—</span>}
-                </td>
-
-                <td className="border-r border-base-300 text-xs">
-                  {c.lastCheckIn || '—'}
-                </td>
-
-                {/* Actions: Paid | Unpaid | Ledger | Edit */}
-                <td>
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      className="btn btn-xs btn-success"
-                      onClick={() => handleMarkPaid(c._id)}
-                      title="Record a full monthly payment"
-                    >
-                      Paid
-                    </button>
-
-                    <button
-                      className="btn btn-xs btn-warning"
-                      onClick={() => handleRefund(c._id)}
-                      title="Reverse the most recent payment"
-                    >
-                      Unpaid
-                    </button>
-
-                    <button
-                      className="btn btn-xs btn-outline"
-                      onClick={() => handleLedger(c)}
-                    >
-                      Ledger
-                    </button>
-
-                    <button
-                      className="btn btn-xs btn-outline btn-info"
-                      onClick={() => handleOpen('edit', c)}
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-
-          {tableData.length === 0 && (
+      {/* ============================================================
+          TABLET + DESKTOP (md and up) — full table
+          ============================================================ */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="table table-md w-full border border-base-300 rounded-lg shadow-sm">
+          <thead className="bg-base-200">
             <tr>
-              <td colSpan="10" className="text-center text-gray-500 py-4">
-                No clients found.
-              </td>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Name</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">UserID</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Email</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Phone</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Rate</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Payment</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Visits</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">In Gym</th>
+              <th className="text-left border-r border-base-300 whitespace-nowrap">Last Check-In</th>
+              <th className="text-left whitespace-nowrap">Actions</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {paginated.map((c, idx) => {
+              const status = c.payment?.status || 'Unpaid';
+              const rate   = c.membership?.rate ?? 0;
+              const bal    = c.payment?.balance || 0;
+              const due    = c.payment?.dueThisMonth || 0;
+
+              return (
+                <tr
+                  key={c._id}
+                  className={`transition-colors duration-200 ${
+                    idx % 2 === 0 ? 'bg-base-100' : 'bg-base-200'
+                  } hover:bg-base-300`}
+                >
+                  <td className="border-r border-base-300 font-medium whitespace-nowrap">
+                    <Link
+                      to={`/clients/${c._id}`}
+                      className="link link-primary hover:underline"
+                    >
+                      {c.FirstName} {c.LastName}
+                    </Link>
+                  </td>
+                  <td className="border-r border-base-300 whitespace-nowrap">{c.UserID}</td>
+                  <td className="border-r border-base-300">{c.email}</td>
+                  <td className="border-r border-base-300 whitespace-nowrap">{c.phone}</td>
+                  <td className="border-r border-base-300 whitespace-nowrap">R {rate}</td>
+
+                  <td className="border-r border-base-300 whitespace-nowrap">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className={`badge ${badgeClass(status)}`}>{status}</span>
+                      {bal > 0 && (
+                        <span className="badge badge-info" title="Prepaid credit">
+                          +R{bal}
+                        </span>
+                      )}
+                      {due > 0 && status !== 'Paid' && (
+                        <span className="text-xs text-error" title="Outstanding">
+                          −R{due}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="border-r border-base-300 text-center">
+                    {c.totalVisitsThisMonth || 0}
+                  </td>
+
+                  <td className="border-r border-base-300 whitespace-nowrap">
+                    {c.currentlyInGym
+                      ? <span className="badge badge-info">Inside</span>
+                      : <span className="text-xs opacity-40">—</span>}
+                  </td>
+
+                  <td className="border-r border-base-300 text-xs whitespace-nowrap">
+                    {c.lastCheckIn || '—'}
+                  </td>
+
+                  <td className="whitespace-nowrap">
+                    <Actions c={c} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Shared pagination — appears under both layouts */}
+      <Pagination />
+
     </div>
   );
 }
