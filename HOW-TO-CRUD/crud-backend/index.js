@@ -144,6 +144,7 @@ var roomRoutes = require('./routes/room.js');
 var paymentRoutes = require('./routes/payments');
 var eventRoutes = require('./routes/events');
 var workerRoutes = require('./routes/workerRoutes');
+const paymentProofRoutes = require('./routes/paymentProofs');
 
 app.use( authRoutes);
 app.use( clientRoutes);
@@ -151,6 +152,7 @@ app.use(propertyRoutes);
 app.use( roomRoutes);
 app.use( paymentRoutes);
 app.use( eventRoutes);
+app.use( paymentProofRoutes);
 app.use( workerRoutes);
 
 // ================================================================

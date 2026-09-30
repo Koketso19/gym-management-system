@@ -580,5 +580,36 @@ router.post('/api/clients/my-summary', verifyToken, async function (req, res) {
   }
 });
 
+// ================================================================
+// POST /api/clients/my-day   { id, date? }
+// All sessions for a single day, sorted by check-in time.
+// date defaults to today.
+// ================================================================
+router.post('/api/clients/my-day', verifyToken, async function (req, res) {
+  try {
+    const { id, date } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'id required' });
+
+    const CheckIn = require('../../db_schema/checkIn');
+    const day = date || moment().format('YYYY-MM-DD');
+
+    const sessions = await CheckIn
+      .find({ clientId: id, date: day })
+      .sort({ checkInTime: 1 });
+
+    const totalMinutes = sessions.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+
+    res.json({
+      success: true,
+      date: day,
+      count: sessions.length,
+      totalMinutes,
+      sessions
+    });
+  } catch (err) {
+    console.error('my-day error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;

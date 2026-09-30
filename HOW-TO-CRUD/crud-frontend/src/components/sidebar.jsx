@@ -34,14 +34,14 @@ const NAV_GROUPS = [
     items: [
       { to: '/clock',   label: 'Clock In / Out', Icon: ClockIcon },
       { to: '/today',   label: "Today's Visits", Icon: CalendarDaysIcon },
-      { to: '/history', label: 'Check-In Log',   Icon: BookOpenIcon },
+   //   { to: '/history', label: 'Check-In Log',   Icon: BookOpenIcon },
     ],
   },
   {
     section: 'System',
     items: [
       { to: '/users',    label: 'Staff / Admins', Icon: ShieldCheckIcon },
-      { to: '/settings', label: 'Settings',       Icon: Cog6ToothIcon },
+   //   { to: '/settings', label: 'Settings',       Icon: Cog6ToothIcon },
     ],
   },
 ];

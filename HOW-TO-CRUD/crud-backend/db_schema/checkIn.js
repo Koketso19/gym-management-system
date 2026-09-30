@@ -1,28 +1,25 @@
 // ================================================================
 // DB SCHEMA: CheckIns
 // ================================================================
-// PURPOSE: Every gym visit — replaces the paper sign-in book
-// ================================================================
 
 var mongoose = require('mongoose');
-var moment   = require('moment');
-
-var Schema = mongoose.Schema;
+var Schema   = mongoose.Schema;
 
 var checkInSchema = new Schema({
-  clientId   : {type: Schema.Types.ObjectId, ref: 'Clients', required: true, index: true},
-  UserID     : {type: String, required: true},
-  FirstName  : {type: String, required: true},
-  LastName   : {type: String, required: true},
+  clientId : { type: Schema.Types.ObjectId, ref: 'SysUsers', required: true, index: true },
+  UserID   : { type: String, required: true, index: true },
+  FirstName: { type: String, required: true },
+  LastName : { type: String, required: true },
 
-  date       : {type: String, required: true, index: true},   // YYYY-MM-DD
-  month      : {type: String, required: true, index: true},   // YYYY-MM
+  date  : { type: String, required: true, index: true },   // YYYY-MM-DD
+  month : { type: String, required: true, index: true },   // YYYY-MM
 
-  checkInTime : {type: String, required: true},               // YYYY-MM-DD HH:mm:ss
-  checkOutTime: {type: String, default: null},
-  durationMinutes: {type: Number, default: 0}
+  checkInTime    : { type: String, required: true },
+  checkOutTime   : { type: String, default: null },
+  durationMinutes: { type: Number, default: 0 }
 }, { collection: 'CheckIns' });
 
-const CheckIn = mongoose.model('CheckIns', checkInSchema);
+checkInSchema.index({ clientId: 1, date: -1 });
+checkInSchema.index({ clientId: 1, checkInTime: -1 });
 
-module.exports = CheckIn;
+module.exports = mongoose.model('CheckIns', checkInSchema);
