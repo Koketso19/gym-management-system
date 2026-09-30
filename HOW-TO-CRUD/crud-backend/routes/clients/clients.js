@@ -25,7 +25,7 @@ const ps = new PaymentService();
 // ================================================================
 // POST /api/clients/create
 // ================================================================
-router.post('/api/clients/create', async function (req, res) {
+router.post('/api/clients/create',verifyToken, async function (req, res) {
   console.log('POST /api/clients/create', req.body);
 
   try {
@@ -96,7 +96,7 @@ router.post('/api/clients/create', async function (req, res) {
 // ================================================================
 // GET /api/clients/list
 // ================================================================
-router.get('/api/clients/list',  async function (req, res) {
+router.get('/api/clients/list', verifyToken, async function (req, res) {
   console.log('GET /api/clients/list — user:', req.user?.username);
 
   try {
@@ -120,7 +120,7 @@ router.get('/api/clients/list',  async function (req, res) {
 // ================================================================
 // GET /api/clients/today
 // ================================================================
-router.get('/api/clients/today',  async function (req, res) {
+router.get('/api/clients/today', verifyToken, async function (req, res) {
   console.log('GET /api/clients/today');
 
   try {
@@ -139,7 +139,7 @@ router.get('/api/clients/today',  async function (req, res) {
 // ================================================================
 // GET /api/clients/in-gym
 // ================================================================
-router.get('/api/clients/in-gym',  async function (req, res) {
+router.get('/api/clients/in-gym', verifyToken, async function (req, res) {
   console.log('GET /api/clients/in-gym');
 
   try {
@@ -158,7 +158,7 @@ router.get('/api/clients/in-gym',  async function (req, res) {
 // ================================================================
 // POST /api/clients/get   { id }
 // ================================================================
-router.post('/api/clients/get',  async function (req, res) {
+router.post('/api/clients/get',verifyToken,  async function (req, res) {
   console.log('POST /api/clients/get', req.body);
 
   try {
@@ -181,7 +181,7 @@ router.post('/api/clients/get',  async function (req, res) {
 // ================================================================
 // POST /api/clients/update   { id, firstName, ... }
 // ================================================================
-router.post('/api/clients/update',  async function (req, res) {
+router.post('/api/clients/update', verifyToken, async function (req, res) {
   console.log('POST /api/clients/update', req.body);
 
   try {
@@ -226,7 +226,7 @@ router.post('/api/clients/update',  async function (req, res) {
 // ================================================================
 // POST /api/clients/delete   { id }
 // ================================================================
-router.post('/api/clients/delete',  async function (req, res) {
+router.post('/api/clients/delete', verifyToken, async function (req, res) {
   console.log('POST /api/clients/delete', req.body);
 
   try {
@@ -280,7 +280,7 @@ console.log('mark-paid — req.user:', req.user);
 // ================================================================
 // POST /api/clients/mark-unpaid   { id }
 // ================================================================
-router.post('/api/clients/mark-unpaid',  async function (req, res) {
+router.post('/api/clients/mark-unpaid',verifyToken,  async function (req, res) {
   console.log('POST /api/clients/mark-unpaid', req.body);
 
   try {
@@ -308,7 +308,7 @@ router.post('/api/clients/mark-unpaid',  async function (req, res) {
 // ================================================================
 // POST /api/clients/checkin   { id }
 // ================================================================
-router.post('/api/clients/checkin', async function (req, res) {
+router.post('/api/clients/checkin',verifyToken, async function (req, res) {
   console.log('POST /api/clients/checkin', req.body);
 
   try {
@@ -341,7 +341,7 @@ router.post('/api/clients/checkin', async function (req, res) {
 // ================================================================
 // POST /api/clients/checkout   { id }
 // ================================================================
-router.post('/api/clients/checkout',  async function (req, res) {
+router.post('/api/clients/checkout', verifyToken, async function (req, res) {
   console.log('POST /api/clients/checkout', req.body);
 
   try {
@@ -375,7 +375,7 @@ router.post('/api/clients/checkout',  async function (req, res) {
 // ================================================================
 // POST /api/clients/history   { id, limit? }
 // ================================================================
-router.post('/api/clients/history',  async function (req, res) {
+router.post('/api/clients/history', verifyToken, async function (req, res) {
   console.log('POST /api/clients/history', req.body);
 
   try {
@@ -487,6 +487,95 @@ router.post('/api/clients/get-by-userid', verifyToken, async function (req, res)
     res.json({ success: true, client: result.Rec });
   } catch (err) {
     console.error('get-by-userid error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ================================================================
+// POST /api/clients/my-summary   { id }
+// Personal stats for one member — this week's visits, time, etc.
+// ================================================================
+router.post('/api/clients/my-summary', verifyToken, async function (req, res) {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ success: false, message: 'id required' });
+
+    const CheckIn = require('../../db_schema/checkIn');
+    const User    = require('../../db_schema/user');
+
+    const me = await User.findById(id);
+    if (!me) return res.status(404).json({ success: false, message: 'Member not found' });
+
+    // -------- this week (Mon → today) --------
+    const now = moment();
+    const day = now.day();                       // 0 Sun .. 6 Sat
+    const monday = now.clone().subtract((day + 6) % 7, 'days').startOf('day');
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const d = monday.clone().add(i, 'days');
+      if (d.isAfter(now, 'day')) break;
+      weekDays.push(d.format('YYYY-MM-DD'));
+    }
+
+    const weekLogs = await CheckIn.find({
+      clientId: me._id,
+      date    : { $in: weekDays }
+    }).sort({ checkInTime: 1 });
+
+    // -------- this month --------
+    const month = now.format('YYYY-MM');
+    const monthLogs = await CheckIn.find({
+      clientId: me._id,
+      month
+    });
+
+    const totalMinutesWeek  = weekLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+    const totalMinutesMonth = monthLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+
+    // -------- one row per day, with duration + count --------
+    const perDay = weekDays.map((d) => {
+      const dayLogs = weekLogs.filter((l) => l.date === d);
+      const minutes = dayLogs.reduce((s, l) => s + (l.durationMinutes || 0), 0);
+      return {
+        date         : d,
+        visits       : dayLogs.length,
+        minutes      : minutes,
+        checkInTime  : dayLogs[0]?.checkInTime || null,
+        checkOutTime : dayLogs[dayLogs.length - 1]?.checkOutTime || null,
+      };
+    });
+
+    // -------- recent visits (last 10) --------
+    const recentVisits = await CheckIn.find({ clientId: me._id })
+      .sort({ checkInTime: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      member: {
+        UserID    : me.UserID,
+        FirstName : me.FirstName,
+        LastName  : me.LastName,
+        membership: me.membership || {},
+        payment   : me.payment || {},
+        currentlyInGym: me.currentlyInGym,
+        lastCheckIn   : me.lastCheckIn,
+        totalVisitsThisMonth: me.totalVisitsThisMonth || 0,
+      },
+      week: {
+        days        : perDay,
+        totalVisits : weekLogs.length,
+        totalMinutes: totalMinutesWeek,
+      },
+      month: {
+        totalVisits : monthLogs.length,
+        totalMinutes: totalMinutesMonth,
+        month,
+      },
+      recentVisits,
+    });
+  } catch (err) {
+    console.error('my-summary error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

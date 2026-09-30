@@ -24,6 +24,7 @@
     "moment": "^2.30.1",
     "mongoose": "^8.11.0",
     "mongoose-bcrypt": "^1.11.0",
+    "multer": "^2.4.0",
     "redis": "^6.2.0"
   },
   "devDependencies": {

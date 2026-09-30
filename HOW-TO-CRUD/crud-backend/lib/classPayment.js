@@ -3,7 +3,7 @@
 // ================================================================
 const moment  = require('moment');
 const Payment = require('../db_schema/payment');
-const Client  = require('../db_schema/client');
+const Client  = require('../db_schema/user');
 
 class PaymentService {
 

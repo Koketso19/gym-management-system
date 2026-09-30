@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+  ArrowPathIcon,
+  UserGroupIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -33,13 +38,12 @@ export default function InGym() {
     return () => clearInterval(interval);
   }, []);
 
-  // live clock (updates every second) — for duration display
+  // live clock — for duration display
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  // check out a member
   const handleCheckOut = async (id, name) => {
     if (!window.confirm(`Check out ${name}?`)) return;
     try {
@@ -54,7 +58,6 @@ export default function InGym() {
     }
   };
 
-  // duration from check-in time to now
   const duration = (checkInStr) => {
     if (!checkInStr) return '—';
     const start = new Date(checkInStr.replace(' ', 'T'));
@@ -67,9 +70,9 @@ export default function InGym() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold">In Gym Now</h1>
           <p className="text-sm text-base-content/60">
@@ -77,16 +80,17 @@ export default function InGym() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="badge badge-lg badge-primary gap-2">
-            <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="badge badge-lg badge-outline badge-primary gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
             {clients.length} inside
           </div>
           <button
             onClick={fetchInGym}
-            className="btn btn-sm btn-outline"
+            className="btn btn-sm btn-outline btn-primary gap-2"
           >
-            🔄 Refresh
+            <ArrowPathIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </div>
       </div>
@@ -108,7 +112,9 @@ export default function InGym() {
       {/* Empty state */}
       {!loading && !error && clients.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="text-6xl mb-4">🏋️</div>
+          <div className="mb-4 rounded-full bg-base-200 p-6">
+            <UserGroupIcon className="w-12 h-12 text-base-content/40" />
+          </div>
           <p className="text-lg font-medium">Nobody is in the gym right now</p>
           <p className="text-sm text-base-content/60">
             Checked-in members will appear here
@@ -142,7 +148,9 @@ export default function InGym() {
                         {c.UserID}
                       </p>
                     </div>
-                    <span className="badge badge-success badge-sm">Inside</span>
+                    <span className="badge badge-sm badge-outline badge-info">
+                      Inside
+                    </span>
                   </div>
 
                   {/* Info rows */}
@@ -159,7 +167,8 @@ export default function InGym() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-base-content/60">Duration</span>
-                      <span className="font-medium text-primary">
+                      <span className="font-medium text-primary flex items-center gap-1">
+                        <ClockIcon className="w-3.5 h-3.5" />
                         {duration(c.lastCheckIn)}
                       </span>
                     </div>
@@ -169,7 +178,7 @@ export default function InGym() {
                   <div className="card-actions justify-end mt-3">
                     <button
                       onClick={() => handleCheckOut(c._id, fullName)}
-                      className="btn btn-sm btn-warning"
+                      className="btn btn-sm btn-outline btn-warning"
                     >
                       Check Out
                     </button>

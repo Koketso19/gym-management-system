@@ -1,29 +1,20 @@
 // ================================================================
-// CLASS CLIENT - Gym Member Management
-// ================================================================
-// Mirrors the structure of classUser.js
+// CLASS CLIENT — gym member operations on SysUsers
 // ================================================================
 
-const client   = require('../db_schema/user');
+const client   = require('../db_schema/user');   // ✅ unified
 const checkIn  = require('../db_schema/checkIn');
 const moment   = require('moment');
 const formidable = require('formidable');
 const PaymentService = require('./classPayment');
 const ps = new PaymentService();
 
-// ================================================================
-// HELPERS
-// ================================================================
-
-function isString(x) {
-  return Object.prototype.toString.call(x) === '[object String]';
-}
-
+// ---- helpers ----
+function isString(x) { return Object.prototype.toString.call(x) === '[object String]'; }
 function escapeRegExp(str) {
   if (!isString(str)) return '';
   return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
 }
-
 function _ToCamelCase(str) {
   return str.toLowerCase().replace(/(?:(^.)|(\s+.))/g, function (match) {
     return match.charAt(match.length - 1).toUpperCase();
@@ -31,25 +22,19 @@ function _ToCamelCase(str) {
 }
 
 // ================================================================
-// DATA TABLES: Get Client Data
+// DATA TABLES
 // ================================================================
-// Extra filter supported: req.body.filter = 'Paid' | 'Unpaid' | 'InGym'
-// ================================================================
-
 async function _DtGetClientData(req) {
   let searchStr = {};
 
-  // ---- DataTables params ----
   let strSearch  = req.body['search[value]'];
   let strSort    = req.body['order[0][column]'];
   let SortIndex  = 'columns[' + strSort + '][data]';
   let SortValue  = req.body[SortIndex] || 'CreateDate';
   let strSortDir = req.body['order[0][dir]'];
   let SortDir    = strSortDir === 'asc' ? 1 : -1;
+  let SysSort    = JSON.parse('{"' + SortValue + '":' + SortDir + '}');
 
-  let SysSort = JSON.parse('{"' + SortValue + '":' + SortDir + '}');
-
-  // ---- Search ----
   if (strSearch) {
     let regex = new RegExp(escapeRegExp(strSearch), 'i');
     searchStr = {
@@ -63,51 +48,43 @@ async function _DtGetClientData(req) {
     };
   }
 
-  // ---- Extra filter (Paid / Unpaid / InGym) ----
   const extraFilter = req.body.filter;
-  if (extraFilter === 'Paid') {
-    searchStr['payment.status'] = 'Paid';
-  } else if (extraFilter === 'Unpaid') {
-    searchStr['payment.status'] = 'Unpaid';
-  } else if (extraFilter === 'InGym') {
-    searchStr['currentlyInGym'] = true;
-  }
+  if (extraFilter === 'Paid')        searchStr['payment.status']  = 'Paid';
+  else if (extraFilter === 'Unpaid') searchStr['payment.status']  = 'Unpaid';
+  else if (extraFilter === 'InGym')  searchStr['currentlyInGym']  = true;
+
+  // ✅ members only
+  searchStr.UserGroup = 'Members';
 
   try {
-    const recordsTotal    = await client.countDocuments({});
+    const recordsTotal    = await client.countDocuments({ UserGroup: 'Members' });
     const recordsFiltered = await client.countDocuments(searchStr);
 
     const results = await client.find(
       searchStr,
       'UserID FirstName LastName email phone membership payment currentlyInGym lastCheckIn lastCheckOut totalVisitsThisMonth status CreateDate',
-      {
-        skip : Number(req.body.start),
-        limit: Number(req.body.length),
-        sort : SysSort
-      }
+      { skip: Number(req.body.start), limit: Number(req.body.length), sort: SysSort }
     );
 
-    let MyData = [];
-    for (let result of results) {
-      MyData.push({
-        _id                 : result._id,
-        UserID              : result.UserID,
-        FirstName           : result.FirstName,
-        LastName            : result.LastName,
-        email               : result.email,
-        phone               : result.phone,
-        membership          : result.membership,
-        paymentStatus       : result.payment?.status || 'Unpaid',
-        paidAmount          : result.payment?.paidAmount || 0,
-        dueAmount           : result.payment?.dueAmount || 0,
-        currentlyInGym      : result.currentlyInGym,
-        lastCheckIn         : result.lastCheckIn,
-        lastCheckOut        : result.lastCheckOut,
-        totalVisitsThisMonth: result.totalVisitsThisMonth,
-        status              : result.status,
-        CreateDate          : result.CreateDate
-      });
-    }
+    const MyData = results.map((r) => ({
+      _id                 : r._id,
+      UserID              : r.UserID,
+      FirstName           : r.FirstName,
+      LastName            : r.LastName,
+      email               : r.email,
+      phone               : r.phone,
+      membership          : r.membership,
+      paymentStatus       : r.payment?.status || 'Unpaid',
+      paidThisMonth       : r.payment?.paidThisMonth || 0,
+      dueThisMonth        : r.payment?.dueThisMonth || 0,
+      balance             : r.payment?.balance || 0,
+      currentlyInGym      : r.currentlyInGym,
+      lastCheckIn         : r.lastCheckIn,
+      lastCheckOut        : r.lastCheckOut,
+      totalVisitsThisMonth: r.totalVisitsThisMonth,
+      status              : r.status,
+      CreateDate          : r.CreateDate
+    }));
 
     return JSON.stringify({
       draw           : req.body.draw,
@@ -115,7 +92,6 @@ async function _DtGetClientData(req) {
       recordsTotal   : recordsTotal,
       data           : MyData
     });
-
   } catch (err) {
     console.log('Error getting client data:', err);
     return null;
@@ -125,7 +101,6 @@ async function _DtGetClientData(req) {
 // ================================================================
 // CREATE
 // ================================================================
-
 async function _CreateClient(Object) {
   try {
     const SavedDoc = await client.create(Object);
@@ -136,67 +111,54 @@ async function _CreateClient(Object) {
 }
 
 // ================================================================
-// MAIN EXPORT
+// MAIN CLASS
 // ================================================================
-
 module.exports = class Client {
   constructor() {}
 
-  // ---------- DATA TABLES ----------
   async DtGetClientData(req) {
     return await _DtGetClientData(req);
   }
 
-  // ---------- CREATE ----------
   async New(Object) {
     return await _CreateClient(Object);
   }
 
-  /**
-   * Build client object from form data (matches FormNewUserObj pattern)
-   */
   async FormNewClientObj(req) {
     return new Promise((resolve, reject) => {
-      var form = new formidable.IncomingForm();
-
-      form.parse(req, function (err, fields, files) {
+      const form = new formidable.IncomingForm();
+      form.parse(req, function (err, fields) {
         if (err) return reject({ Err: err });
-
-        if (fields.uid != null &&
-            fields.firstName != null &&
-            fields.LastName != null &&
-            fields.psw != null &&
-            fields.email != null &&
-            fields.phone != null) {
-
-          var ClientData = {
-            UserID           : fields.uid.toLowerCase(),
-            FirstName        : _ToCamelCase(fields.firstName),
-            LastName         : _ToCamelCase(fields.LastName),
-            Password         : fields.psw,
-            email            : fields.email.toLowerCase(),
-            phone            : fields.phone,
-            ConfirmedPassword: true,
-            UserGroup        : ['Members'],
-            membership: {
-              name     : fields.membershipName || 'Monthly',
-              rate     : Number(fields.rate) || 500,
-              startDate: fields.startDate || moment().format('YYYY-MM-DD'),
-              endDate  : fields.endDate   || null
-            },
-            payment: {
-              currentMonth: moment().format('YYYY-MM'),
-              status      : 'Unpaid',
-              paidAmount  : 0,
-              dueAmount   : Number(fields.rate) || 500,
-              paidAt      : null,
-              markedBy    : null
+        if (fields.uid && fields.firstName && fields.LastName && fields.psw && fields.email && fields.phone) {
+          resolve({
+            ClientData: {
+              UserID           : fields.uid.toLowerCase(),
+              FirstName        : _ToCamelCase(fields.firstName),
+              LastName         : _ToCamelCase(fields.LastName),
+              Password         : fields.psw,
+              email            : fields.email.toLowerCase(),
+              phone            : fields.phone,
+              ConfirmedPassword: true,
+              UserGroup        : ['Members'],
+              membership: {
+                name     : fields.membershipName || 'Monthly',
+                rate     : Number(fields.rate) || 500,
+                startDate: fields.startDate || moment().format('YYYY-MM-DD'),
+                endDate  : fields.endDate   || null
+              },
+              payment: {
+                currentMonth : moment().format('YYYY-MM'),
+                status       : 'Unpaid',
+                paidThisMonth: 0,
+                dueThisMonth : Number(fields.rate) || 500,
+                balance      : 0,
+                lastPaidAt   : null
+              },
+              status: 'Active'
             }
-          };
-
-          return resolve({ ClientData });
+          });
         } else {
-          return resolve({ ClientData: null });
+          resolve({ ClientData: null });
         }
       });
     });
@@ -205,22 +167,18 @@ module.exports = class Client {
   // ---------- READ / FIND ----------
   async Find(KeyValuePair) {
     try {
-      const ClientArr = await client.find(KeyValuePair);
+      const filter = { ...(KeyValuePair || {}), UserGroup: 'Members' };
+      const ClientArr = await client.find(filter);
       return ClientArr.length > 0 ? { ClientArr } : { ClientArr: null };
     } catch (err) {
       return { Err: err };
     }
   }
 
-  /**
-   * Find by UserID + optional password verification (matches classUser.FindOne)
-   */
   async FindOne(UserName, Password, VerifyPwd) {
     try {
       const Rec = await client.findOne({ UserID: UserName });
-
       if (!Rec) return { Client: null };
-
       if (VerifyPwd === true) {
         const valid = await Rec.verifyPassword(Password);
         return valid ? { Client: Rec } : { Client: null };
@@ -265,60 +223,51 @@ module.exports = class Client {
     }
   }
 
-  // ================================================================
-  // PAYMENT — owner marks Paid / Unpaid
-  // ================================================================
-  /**
-   * Mark payment as Paid
-   * USAGE: await c.MarkPaid(clientId, 'admin')
-   */
-async MarkPaid(clientId, markedBy, amount) {
-  try {
-    const Rec = await client.findById(clientId);
-    if (!Rec) return { Err: 'Client not found' };
-    const out = await ps.recordPayment(Rec, Number(amount) || Rec.membership.rate, {
-      method: 'Cash', paidBy: markedBy, note: ''
-    });
-    return { SavedDoc: out.client, Payment: out.payment };
-  } catch (err) {
-    return { Err: err };
+  // ---------- PAYMENT ----------
+  async MarkPaid(clientId, markedBy, amount) {
+    try {
+      const Rec = await client.findById(clientId);
+      if (!Rec) return { Err: 'Client not found' };
+      if (!(Rec.UserGroup || []).includes('Members')) return { Err: 'Not a member' };
+      const out = await ps.recordPayment(Rec, Number(amount) || Rec.membership.rate, {
+        method: 'Cash', paidBy: markedBy, note: ''
+      });
+      return { SavedDoc: out.client, Payment: out.payment };
+    } catch (err) {
+      return { Err: err };
+    }
   }
-}
 
-async MarkUnpaid(clientId, markedBy) {
-  try {
-    const Rec = await client.findById(clientId);
-    if (!Rec) return { Err: 'Client not found' };
-    const updated = await ps.clearMonth(Rec, Rec.payment.currentMonth);
-    return { SavedDoc: updated };
-  } catch (err) {
-    return { Err: err };
+  async MarkUnpaid(clientId, markedBy) {
+    try {
+      const Rec = await client.findById(clientId);
+      if (!Rec) return { Err: 'Client not found' };
+      if (!(Rec.UserGroup || []).includes('Members')) return { Err: 'Not a member' };
+      const updated = await ps.clearMonth(Rec, Rec.payment.currentMonth);
+      return { SavedDoc: updated };
+    } catch (err) {
+      return { Err: err };
+    }
   }
-}
 
   async RefundPayment(clientId, paymentId, markedBy, reason) {
     try {
       const Rec = await client.findById(clientId);
       if (!Rec) return { Err: 'Client not found' };
-
       const out = await ps.refundPayment(Rec, paymentId, markedBy, reason);
       if (out.Err) return { Err: out.Err };
-
       return { SavedDoc: out.client, Refund: out.refund };
     } catch (err) {
       return { Err: err };
     }
   }
-  // ================================================================
-  // CHECK-IN / CHECK-OUT — the digital book
-  // ================================================================
-  /**
-   * Client checks in. Refuses if already inside or Unpaid.
-   */
+
+  // ---------- CHECK-IN / CHECK-OUT ----------
   async CheckIn(clientId) {
     try {
       const Rec = await client.findById(clientId);
       if (!Rec) return { Err: 'Client not found' };
+      if (!(Rec.UserGroup || []).includes('Members')) return { Err: 'Not a member' };
       if (Rec.currentlyInGym) return { Err: 'Already checked in' };
       if (Rec.payment?.status === 'Unpaid') return { Err: 'Payment required' };
 
@@ -327,24 +276,13 @@ async MarkUnpaid(clientId, markedBy) {
       const month = now.format('YYYY-MM');
       const time  = now.format('YYYY-MM-DD HH:mm:ss');
 
-      // 1. Log the visit
       const Log = await checkIn.create({
-        clientId : Rec._id,
-        UserID   : Rec.UserID,
-        FirstName: Rec.FirstName,
-        LastName : Rec.LastName,
-        date,
-        month,
-        checkInTime : time,
-        checkOutTime: null,
-        durationMinutes: 0
+        clientId: Rec._id, UserID: Rec.UserID, FirstName: Rec.FirstName, LastName: Rec.LastName,
+        date, month, checkInTime: time, checkOutTime: null, durationMinutes: 0
       });
 
-      // 2. Update client summary
       Rec.currentlyInGym = true;
       Rec.lastCheckIn    = time;
-
-      // reset visit counter if month changed
       if (Rec.payment?.currentMonth && Rec.payment.currentMonth !== month) {
         Rec.totalVisitsThisMonth = 0;
       }
@@ -352,16 +290,12 @@ async MarkUnpaid(clientId, markedBy) {
       Rec.LastUpdate           = time;
 
       await Rec.save();
-
       return { SavedDoc: Rec, Log };
     } catch (err) {
       return { Err: err };
     }
   }
 
-  /**
-   * Client checks out.
-   */
   async CheckOut(clientId) {
     try {
       const Rec = await client.findById(clientId);
@@ -371,25 +305,22 @@ async MarkUnpaid(clientId, markedBy) {
       const now  = moment();
       const time = now.format('YYYY-MM-DD HH:mm:ss');
 
-      // Update last open CheckIn record
       const openLog = await checkIn.findOne({
-        clientId: Rec._id,
-        checkOutTime: null
+        clientId: Rec._id, checkOutTime: null
       }).sort({ checkInTime: -1 });
 
       let durationMinutes = 0;
       if (openLog) {
         const start = moment(openLog.checkInTime, 'YYYY-MM-DD HH:mm:ss');
         durationMinutes = now.diff(start, 'minutes');
-        openLog.checkOutTime     = time;
-        openLog.durationMinutes  = durationMinutes;
+        openLog.checkOutTime    = time;
+        openLog.durationMinutes = durationMinutes;
         await openLog.save();
       }
 
       Rec.currentlyInGym = false;
       Rec.lastCheckOut   = time;
       Rec.LastUpdate     = time;
-
       await Rec.save();
 
       return { SavedDoc: Rec, Log: openLog, durationMinutes };
@@ -398,24 +329,15 @@ async MarkUnpaid(clientId, markedBy) {
     }
   }
 
-  /**
-   * Get visit history for a client (the digital book, per member)
-   */
   async GetCheckInHistory(clientId, limit) {
     try {
-      const logs = await checkIn
-        .find({ clientId })
-        .sort({ checkInTime: -1 })
-        .limit(limit || 100);
+      const logs = await checkIn.find({ clientId }).sort({ checkInTime: -1 }).limit(limit || 100);
       return { Logs: logs };
     } catch (err) {
       return { Err: err };
     }
   }
 
-  /**
-   * Today's visits (for admin dashboard)
-   */
   async GetTodayCheckIns() {
     try {
       const today = moment().format('YYYY-MM-DD');
@@ -426,13 +348,12 @@ async MarkUnpaid(clientId, markedBy) {
     }
   }
 
-  /**
-   * Who is currently in the gym
-   */
   async GetCurrentlyInGym() {
     try {
-      const list = await client.find({ currentlyInGym: true })
-        .select('UserID FirstName LastName phone lastCheckIn');
+      const list = await client.find({
+        currentlyInGym: true,
+        UserGroup: 'Members'
+      }).select('UserID FirstName LastName phone lastCheckIn');
       return { Clients: list };
     } catch (err) {
       return { Err: err };

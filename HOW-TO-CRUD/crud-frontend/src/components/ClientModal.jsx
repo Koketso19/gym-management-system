@@ -14,32 +14,39 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
   };
 
   const [formData, setFormData] = useState(empty);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (mode === 'edit' && clientData) {
       setFormData({
-        username: clientData.UserID || '',
-        password: '',
+        username : clientData.UserID || '',
+        password : '',
         firstName: clientData.FirstName || '',
-        lastName: clientData.LastName || '',
-        email: clientData.email || '',
-        phone: clientData.phone || '',
-        rate: clientData.membership?.rate ?? 500,
-        status: clientData.status || 'Active',
+        lastName : clientData.LastName || '',
+        email    : clientData.email || '',
+        phone    : clientData.phone || '',
+        rate     : clientData.membership?.rate ?? 500,
+        status   : clientData.status || 'Active',
       });
     } else {
       setFormData(empty);
     }
-  }, [mode, clientData]);
+    setBusy(false);
+  }, [mode, clientData, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    OnSubmit(formData);
+    setBusy(true);
+    try {
+      await OnSubmit(formData);
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -52,6 +59,7 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+          {/* First / Last name */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">First Name *</label>
@@ -77,6 +85,7 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
             </div>
           </div>
 
+          {/* Username / Password */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Username *</label>
@@ -108,6 +117,7 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
             </div>
           </div>
 
+          {/* Email / Phone */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Email</label>
@@ -131,6 +141,7 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
             </div>
           </div>
 
+          {/* Rate / Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1">Monthly Rate (R) *</label>
@@ -140,6 +151,7 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
                 value={formData.rate}
                 onChange={handleChange}
                 required
+                min="0"
                 className="input input-bordered w-full"
               />
             </div>
@@ -158,12 +170,13 @@ export default function ClientModal({ isOpen, onClose, OnSubmit, mode, clientDat
             </div>
           </div>
 
+          {/* Buttons */}
           <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2 md:gap-4 pt-4">
-            <button type="button" onClick={onClose} className="btn btn-outline">
+            <button type="button" onClick={onClose} className="btn btn-outline" disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              {mode === 'edit' ? 'Update Client' : 'Add Client'}
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? 'Saving…' : (mode === 'edit' ? 'Update Client' : 'Add Client')}
             </button>
           </div>
         </form>

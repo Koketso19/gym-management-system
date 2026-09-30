@@ -13,8 +13,6 @@ export default function TableList({
   const [page, setPage] = useState(1);
 
   const totalPages = Math.max(1, Math.ceil(tableData.length / PAGE_SIZE));
-
-  // Clamp page if data shrinks
   const safePage = Math.min(page, totalPages);
 
   const paginated = useMemo(() => {
@@ -22,27 +20,29 @@ export default function TableList({
     return tableData.slice(start, start + PAGE_SIZE);
   }, [tableData, safePage]);
 
+  // outline badges (matches workers table style)
   const badgeClass = (status) =>
-    status === 'Paid'    ? 'badge-success' :
-    status === 'Partial' ? 'badge-warning' :
-                           'badge-error';
+    status === 'Paid'    ? 'badge-outline badge-success' :
+    status === 'Partial' ? 'badge-outline badge-warning' :
+                           'badge-outline badge-error';
 
+  // outline action buttons (matches workers table style)
   const Actions = ({ c }) => (
     <div className="flex flex-wrap gap-1">
       <button
-        className="btn btn-xs btn-success"
+        className="btn btn-xs btn-outline btn-success"
         onClick={() => handleMarkPaid(c._id)}
       >
         Paid
       </button>
       <button
-        className="btn btn-xs btn-warning"
+        className="btn btn-xs btn-outline btn-warning"
         onClick={() => handleRefund(c._id)}
       >
         Unpaid
       </button>
       <button
-        className="btn btn-xs btn-outline"
+        className="btn btn-xs btn-outline btn-info"
         onClick={() => handleLedger(c)}
       >
         Ledger
@@ -98,9 +98,7 @@ export default function TableList({
   return (
     <div className="px-4 pb-6">
 
-      {/* ============================================================
-          PHONE (below md) — simple list: name + actions only
-          ============================================================ */}
+      {/* PHONE */}
       <div className="md:hidden space-y-2">
         {paginated.map((c, idx) => {
           const status = c.payment?.status || 'Unpaid';
@@ -112,7 +110,6 @@ export default function TableList({
                 idx % 2 === 0 ? 'bg-base-100' : 'bg-base-200'
               }`}
             >
-              {/* Row 1: name + status badge */}
               <div className="flex items-center justify-between gap-2 mb-2">
                 <Link
                   to={`/clients/${c._id}`}
@@ -125,16 +122,13 @@ export default function TableList({
                 </span>
               </div>
 
-              {/* Row 2: actions */}
               <Actions c={c} />
             </div>
           );
         })}
       </div>
 
-      {/* ============================================================
-          TABLET + DESKTOP (md and up) — full table
-          ============================================================ */}
+      {/* TABLET + DESKTOP */}
       <div className="hidden md:block overflow-x-auto">
         <table className="table table-md w-full border border-base-300 rounded-lg shadow-sm">
           <thead className="bg-base-200">
@@ -181,16 +175,16 @@ export default function TableList({
 
                   <td className="border-r border-base-300 whitespace-nowrap">
                     <div className="flex flex-wrap items-center gap-1">
-                      <span className={`badge ${badgeClass(status)}`}>{status}</span>
+                      <span className={`badge badge-sm ${badgeClass(status)}`}>
+                        {status}
+                      </span>
                       {bal > 0 && (
-                        <span className="badge badge-info" title="Prepaid credit">
+                        <span className="badge badge-sm badge-outline badge-info">
                           +R{bal}
                         </span>
                       )}
                       {due > 0 && status !== 'Paid' && (
-                        <span className="text-xs text-error" title="Outstanding">
-                          −R{due}
-                        </span>
+                        <span className="text-xs text-error">−R{due}</span>
                       )}
                     </div>
                   </td>
@@ -201,7 +195,7 @@ export default function TableList({
 
                   <td className="border-r border-base-300 whitespace-nowrap">
                     {c.currentlyInGym
-                      ? <span className="badge badge-info">Inside</span>
+                      ? <span className="badge badge-sm badge-outline badge-info">Inside</span>
                       : <span className="text-xs opacity-40">—</span>}
                   </td>
 
@@ -219,7 +213,6 @@ export default function TableList({
         </table>
       </div>
 
-      {/* Shared pagination — appears under both layouts */}
       <Pagination />
 
     </div>
