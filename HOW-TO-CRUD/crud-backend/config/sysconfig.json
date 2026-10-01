@@ -6,7 +6,7 @@
     "SessionTimeoutMin": 60,
     "server_ip": "localhost",
     	"mongoDB": {
-		"url": "mongodb://localhost:27017/BMG",
+		"url": "mongodb://Koketso:Koketso_12@ac-mojs33o-shard-00-00.jtgzcbl.mongodb.net:27017,ac-mojs33o-shard-00-01.jtgzcbl.mongodb.net:27017,ac-mojs33o-shard-00-02.jtgzcbl.mongodb.net:27017/gym?ssl=true&replicaSet=atlas-8k95ty-shard-0&authSource=admin&appName=Cluster0",
 		"useNewUrlParser": true
 	},
     "REDIS": {
