@@ -18,8 +18,8 @@ const NAV_GROUPS = [
   {
     section: 'Overview',
     items: [
-      { to: '/',        label: 'Dashboard',  Icon: HomeIcon },
-      { to: '/in-gym',  label: 'In Gym Now', Icon: UserGroupIcon },
+      { to: '/',       label: 'Dashboard',  Icon: HomeIcon },
+      { to: '/in-gym', label: 'In Gym Now', Icon: UserGroupIcon },
     ],
   },
   {
@@ -32,16 +32,14 @@ const NAV_GROUPS = [
   {
     section: 'Activity',
     items: [
-      { to: '/clock',   label: 'Clock In / Out', Icon: ClockIcon },
-      { to: '/today',   label: "Today's Visits", Icon: CalendarDaysIcon },
-   //   { to: '/history', label: 'Check-In Log',   Icon: BookOpenIcon },
+      { to: '/clock', label: 'Clock In / Out', Icon: ClockIcon },
+      { to: '/today', label: "Today's Visits", Icon: CalendarDaysIcon },
     ],
   },
   {
     section: 'System',
     items: [
-      { to: '/users',    label: 'Staff / Admins', Icon: ShieldCheckIcon },
-   //   { to: '/settings', label: 'Settings',       Icon: Cog6ToothIcon },
+      { to: '/users', label: 'Staff / Admins', Icon: ShieldCheckIcon },
     ],
   },
 ];
@@ -49,7 +47,6 @@ const NAV_GROUPS = [
 const Sidebar = ({ onLogout, gymName = 'Iron Temple' }) => {
   const navigate = useNavigate();
 
-  // Pull user info from localStorage for the footer
   let user = {};
   try { user = JSON.parse(localStorage.getItem('user') || '{}'); } catch {}
   const displayName =
@@ -57,6 +54,12 @@ const Sidebar = ({ onLogout, gymName = 'Iron Temple' }) => {
     user.username ||
     'User';
   const role = localStorage.getItem('role') || 'member';
+
+  // Close the mobile drawer by unchecking the checkbox
+  const closeDrawer = () => {
+    const toggle = document.getElementById('sidebar-toggle');
+    if (toggle) toggle.checked = false;
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -67,7 +70,7 @@ const Sidebar = ({ onLogout, gymName = 'Iron Temple' }) => {
   };
 
   return (
-    <div className="drawer-side">
+    <div className="drawer-side z-40">
       <label htmlFor="sidebar-toggle" className="drawer-overlay"></label>
 
       <aside className="menu p-4 w-64 min-h-full bg-base-100 text-base-content flex flex-col">
@@ -93,12 +96,14 @@ const Sidebar = ({ onLogout, gymName = 'Iron Temple' }) => {
                     <NavLink
                       to={to}
                       end={to === '/'}
+                      onClick={closeDrawer}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 rounded-lg ${
+                        [
+                          'flex items-center gap-3 rounded-lg transition-colors',
                           isActive
-                            ? 'bg-primary text-primary-content font-medium'
-                            : 'hover:bg-base-200'
-                        }`
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'hover:bg-base-200',
+                        ].join(' ')
                       }
                     >
                       <Icon className="w-5 h-5" />
